@@ -63,7 +63,7 @@ def analyze_receipt(image_bytes: bytes, mime_type: str) -> dict:
     logger.info("Sending image to Claude, size: %s bytes, mime: %s", len(image_bytes), mime_type)
     message = client.messages.create(
         model="claude-sonnet-5",
-        max_tokens=1000,
+        max_tokens=4000,
         system=SYSTEM_PROMPT,
         messages=[{
             "role": "user",
@@ -73,7 +73,12 @@ def analyze_receipt(image_bytes: bytes, mime_type: str) -> dict:
             ]
         }]
     )
-    raw = message.content[0].text
+    # Current models think before answering, so the first block is a thinking
+    # block, not the answer. The old bot read content[0].text, which raises
+    # against any thinking-capable model — take the first text block instead.
+    raw = next((b.text for b in message.content if b.type == "text"), None)
+    if raw is None:
+        raise RuntimeError(f"Claude returned no text block (stop_reason={message.stop_reason})")
     logger.info("Claude response: %s", raw)
     text = raw.strip().replace("```json", "").replace("```", "").strip()
     return json.loads(text)
