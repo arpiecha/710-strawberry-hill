@@ -111,6 +111,8 @@
     .hdr-link { font-size:13px;padding:8px 16px;border:1px solid #E2E8F0;border-radius:6px;
                 background:white;color:#0D1B2A;text-decoration:none;white-space:nowrap; }
     .hdr-link:hover { background:#F1F5F9; }
+    .job-admin { display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:1.5rem 0 0.5rem; }
+    .job-admin button { font-size:12px;padding:6px 14px;color:#64748B; }
     .row-del { border:none;background:none;color:#94A3B8;cursor:pointer;padding:2px 6px;font-size:14px;font-family:inherit; }
     .row-del:hover { color:#DC2626; }
     .table-wrap { overflow-x:auto; }
@@ -137,9 +139,7 @@
         <h1 id="job-title">--</h1>
       </div>
       <div class="header-right">
-        <select id="client" onchange="clientChanged()"></select>
-        <button onclick="openNewClient()">+ New Client</button>
-        <button id="del-client-btn" onclick="deleteClient()">Delete Job</button>
+        <select id="client" onchange="clientChanged()" class="hide"></select>
         <button onclick="loadReceipts()">Refresh</button>
         <a href="/add" class="hdr-link">📷 Phone</a>
       </div>
@@ -263,6 +263,11 @@
     </div>
     </div><!-- end dash -->
 
+    <div class="job-admin">
+      <button onclick="openNewClient()">+ New Client</button>
+      <button id="del-client-btn" onclick="deleteClient()">Delete Job</button>
+    </div>
+
   </div>
   </div>
 
@@ -364,6 +369,9 @@
     }
 
     const none = clients.length === 0;
+    // With a single job the picker just repeats the heading, so only show it
+    // once there is something to switch between.
+    show('client', clients.length > 1);
     show('no-clients', none);
     show('dash', !none);
     $('del-client-btn').disabled = none;
