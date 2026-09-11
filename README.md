@@ -29,9 +29,10 @@ away.
 
 ## Project tab
 
-Rename the project (the name at the top of the page), change the passcode,
-and pick light, dark or auto for the theme. The theme choice is per device
-and the phone page follows it.
+Rename the project (the name at the top of the page), set the start date the
+counter at the top runs from, change the passcode, and pick light, dark or
+auto for the theme. The theme choice is per device and the phone page follows
+it.
 
 The passcode lives in the database once it has been changed here;
 `ADMIN_PASSWORD` is only the starting value. Changing it signs out every

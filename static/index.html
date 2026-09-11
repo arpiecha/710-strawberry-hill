@@ -203,15 +203,6 @@
           <div id="project-timer" style="font-size:18px;font-weight:600;color:var(--accent);">--</div>
         </div>
       </div>
-      <button onclick="showDatePicker()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--accent);cursor:pointer;font-weight:500;white-space:nowrap;">📅 Set Start Date</button>
-    </div>
-    <div id="date-picker-wrap" style="display:none;background:var(--surface);border-radius:10px;padding:1rem;border:1px solid var(--border);margin-bottom:1rem;">
-      <div style="font-size:13px;font-weight:500;color:var(--accent);margin-bottom:8px;">Set Project Start Date</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input type="date" id="start-date-input" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;outline:none;">
-        <button onclick="saveStartDate()" style="padding:8px 16px;background:var(--accent);color:var(--on-accent);border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>
-        <button onclick="document.getElementById('date-picker-wrap').style.display='none'" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:13px;cursor:pointer;">Cancel</button>
-      </div>
     </div>
 
     <div id="no-clients" class="error hide" style="margin-bottom:1rem;">
@@ -319,6 +310,14 @@
         <input type="text" id="s-name" style="width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;outline:none;background:var(--surface);color:var(--text);margin-bottom:8px;">
         <button onclick="saveProjectName()" style="width:100%;padding:10px;font-size:14px;background:var(--accent);color:var(--on-accent);border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">Save Name</button>
         <div id="s-name-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;margin-top:8px;"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Start Date</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">The date the project began. The counter at the top runs from here.</div>
+        <input type="date" id="start-date-input" style="width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;outline:none;background:var(--surface);color:var(--text);margin-bottom:8px;">
+        <button onclick="saveStartDate()" style="width:100%;padding:10px;font-size:14px;background:var(--accent);color:var(--on-accent);border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">Save Start Date</button>
+        <div id="s-date-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;margin-top:8px;"></div>
       </div>
 
       <div class="section">
@@ -475,7 +474,6 @@
     try { localStorage.setItem(CLIENT_KEY, $('client').value); } catch (e) {}
     const c = currentClient();
     $('job-title').textContent = c ? c.name : '--';
-    $('date-picker-wrap').style.display = 'none';
     syncUrl();
     renderStartDate();
     loadReceipts();
@@ -530,13 +528,6 @@
 
   // --- project start date -----------------------------------------------
 
-  function showDatePicker() {
-    const wrap = $('date-picker-wrap');
-    const open = wrap.style.display !== 'none';
-    wrap.style.display = open ? 'none' : 'block';
-    if (!open) $('start-date-input').value = (currentClient() || {}).start_date || '';
-  }
-
   async function saveStartDate() {
     const value = $('start-date-input').value;
     const c = currentClient();
@@ -546,11 +537,10 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ start_date: value })
     });
-    if (r.ok) {
-      c.start_date = value || null;   // keep the cached copy in step
-      $('date-picker-wrap').style.display = 'none';
-      renderStartDate();
-    }
+    if (!r.ok) return setStatus('s-date-status', 'Could not save the start date', false);
+    c.start_date = value || null;   // keep the cached copy in step
+    renderStartDate();
+    setStatus('s-date-status', value ? 'Saved' : 'Start date cleared', true);
   }
 
   function renderStartDate() {
@@ -862,7 +852,9 @@
     const c = currentClient();
     $('s-name').value = c ? c.name : '';
     $('s-name-status').style.display = 'none';
+    $('s-date-status').style.display = 'none';
     $('s-pass-status').style.display = 'none';
+    $('start-date-input').value = c ? (c.start_date || '') : '';
     $('s-current').value = ''; $('s-new').value = ''; $('s-confirm').value = '';
     markTheme();
   }
