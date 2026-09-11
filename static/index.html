@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>GC Tracker</title>
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
@@ -10,155 +12,199 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="GCTracker">
   <meta name="theme-color" content="#0D1B2A">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    input, select, textarea { font-size: 16px; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-           background: #F8FAFC; color: #1E293B; min-height: 100vh; }
-    .container { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem 4rem; }
-
-    .header { display: flex; align-items: center; justify-content: space-between;
-              margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px; }
+    input, select, textarea { font-size: 16px !important; }
+    input[type="date"] { max-width: 100%; width: 100%; -webkit-appearance: none; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #1E293B; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px; }
     .header h1 { font-size: 22px; font-weight: 600; }
-    .header h1 span { color: #06B6D4; }
-    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
     .last-updated { font-size: 12px; color: #64748B; }
-
-    button { padding: 8px 16px; font-size: 13px; border: 1px solid #E2E8F0; border-radius: 6px;
-             background: white; color: #0D1B2A; cursor: pointer; font-family: inherit; }
+    button { padding: 8px 16px; font-size: 13px; border: 1px solid #E2E8F0; border-radius: 6px; background: white; color: #0D1B2A; cursor: pointer; font-family: inherit; }
     button:hover { background: #F1F5F9; }
-    button:disabled { opacity: 0.5; cursor: default; }
-    .btn-dark { background: #0D1B2A; color: white; border-color: #0D1B2A; font-weight: 600; }
-    .btn-dark:hover { background: #132236; }
-    a.btn-link { display: inline-block; padding: 8px 16px; font-size: 13px; border: 1px solid #E2E8F0;
-                 border-radius: 6px; background: white; color: #0D1B2A; text-decoration: none; }
-    a.btn-link:hover { background: #F1F5F9; }
-
-    .jobbar { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
-    .jobbar .field { flex: 1; min-width: 220px; }
-    label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
-            text-transform: uppercase; color: #64748B; margin-bottom: 5px; }
-    select, input[type="text"], input[type="number"], input[type="date"], textarea {
-      width: 100%; padding: 9px 12px; font-size: 14px; border: 1px solid #E2E8F0;
-      border-radius: 8px; font-family: inherit; outline: none; background: white; color: #1E293B; }
-    select:focus, input:focus, textarea:focus { border-color: #0D1B2A; }
-    textarea { resize: vertical; min-height: 64px; }
-
-    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-               gap: 12px; margin-bottom: 1.5rem; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
     .metric { background: white; border-radius: 8px; padding: 1rem; border: 1px solid #E2E8F0; }
-    .metric-label { font-size: 11px; color: #64748B; margin-bottom: 4px; font-weight: 500;
-                    letter-spacing: 0.05em; text-transform: uppercase; }
+    .metric-label { font-size: 11px; color: #64748B; margin-bottom: 4px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
     .metric-value { font-size: 22px; font-weight: 600; }
     .metric-value.green { color: #059669; }
     .metric-value.red { color: #DC2626; }
-
-    .section { background: white; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;
-               border: 1px solid #E2E8F0; }
+    .section { background: white; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #E2E8F0; }
     .section-title { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
-
     table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-    th { text-align: left; padding: 6px 8px; color: #64748B; font-weight: 600; font-size: 11px;
-         letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid #E5E7EB; }
-    td { padding: 8px; border-bottom: 1px solid #F3F4F6; overflow: hidden;
-         text-overflow: ellipsis; white-space: nowrap; }
+    th { text-align: left; padding: 6px 8px; color: #64748B; font-weight: 600; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid #E5E7EB; }
+    td { padding: 8px 8px; border-bottom: 1px solid #F3F4F6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     tr:last-child td { border-bottom: none; }
-    .table-wrap { overflow-x: auto; }
     .badge { font-size: 11px; padding: 2px 7px; border-radius: 20px; font-weight: 500; }
     .badge-purchase { background: #D1FAE5; color: #065F46; }
     .badge-return { background: #FEE2E2; color: #991B1B; }
     .amount-pos { color: #059669; font-weight: 600; }
     .amount-neg { color: #DC2626; font-weight: 600; }
-    a { color: #2563EB; }
-    .row-del { border: none; background: none; color: #94A3B8; cursor: pointer; padding: 2px 6px; font-size: 14px; }
-    .row-del:hover { color: #DC2626; background: none; }
-
-    .badge-soon { background: #FEF3C7; color: #92400E; }
-    .badge-upcoming { background: #D1FAE5; color: #065F46; }
-    .badge-today { background: #FEE2E2; color: #991B1B; }
-    .bill-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
-                padding: 11px 12px; background: #F8FAFC; border: 1px solid #E2E8F0;
-                border-radius: 8px; margin-bottom: 8px; }
-    .bill-name { font-size: 14px; font-weight: 600; }
-    .bill-due { font-size: 12px; color: #64748B; margin-top: 2px; }
     .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; font-size: 12px; color: #64748B; }
     .legend-item { display: flex; align-items: center; gap: 4px; }
     .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-    .loading { text-align: center; padding: 2rem; color: #94A3B8; font-size: 14px; }
+    .loading { text-align: center; padding: 2rem; color: #9CA3AF; font-size: 14px; }
+    .error { padding: 1rem; color: #991B1B; background: #FEE2E2; border-radius: 8px; font-size: 14px; line-height: 1.6; }
     .download-btn { width: 100%; margin-top: 1rem; padding: 10px; font-size: 14px; }
-
-    .msg { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 1rem; line-height: 1.5; }
-    .msg-error { background: #FEE2E2; color: #991B1B; }
-    .msg-warn { background: #FEF3C7; color: #92400E; }
-    .msg-ok { background: #D1FAE5; color: #065F46; }
-
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-                     z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    a { color: #2563EB; }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+    .upload-receipt-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 14px; font-weight: 600; background: #0D1B2A; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; letter-spacing: 0.03em; }
+    .manual-entry-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 14px; font-weight: 500; background: white; color: #0D1B2A; border: 1px solid #E2E8F0; border-radius: 6px; cursor: pointer; font-family: inherit; }
+    .manual-entry-btn:hover { background: #F1F5F9; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.active { display: flex; }
-    .modal { background: white; border-radius: 10px; padding: 1.5rem; width: 100%;
-             max-width: 480px; max-height: 90vh; overflow-y: auto; }
+    .modal { background: white; border-radius: 10px; max-width: calc(100vw - 2rem); overflow-x: hidden; padding: 1.5rem; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
     .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
     .modal-field { margin-bottom: 12px; }
+    .modal-field label { font-size: 12px; color: #64748B; display: block; margin-bottom: 4px; }
+    .modal-field input, .modal-field select { width: 100%; padding: 8px 12px; font-size: 14px; border: 1px solid #E2E8F0; border-radius: 8px; font-family: inherit; outline: none; }
+    .modal-field input:focus, .modal-field select:focus { border-color: #0D1B2A; }
+    .modal-preview { width: 100%; max-height: 150px; object-fit: contain; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #E2E8F0; }
     .modal-actions { display: flex; gap: 8px; margin-top: 1rem; }
-    .modal-btn { flex: 1; padding: 10px; font-size: 14px; border-radius: 8px; cursor: pointer;
-                 font-family: inherit; font-weight: 500; }
-    .modal-preview { width: 100%; max-height: 160px; object-fit: contain; border-radius: 8px;
-                     border: 1px solid #E2E8F0; margin-bottom: 1rem; background: #F8FAFC; }
-    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .spinner { width: 24px; height: 24px; border: 2px solid #E5E7EB; border-top-color: #0D1B2A;
-               border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    .modal-btn { flex: 1; padding: 10px; font-size: 14px; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 500; }
+    .modal-btn-confirm { background: #0D1B2A; color: white; border: none; }
+    .modal-btn-confirm:hover { background: #132236; }
+    .modal-btn-cancel { background: white; color: #1E293B; border: 1px solid #E2E8F0; }
+    .modal-btn-cancel:hover { background: #F1F5F9; }
+    .modal-analyzing { text-align: center; padding: 2rem; color: #64748B; font-size: 14px; }
+    .modal-spinner { width: 24px; height: 24px; border: 2px solid #E5E7EB; border-top-color: #2563EB; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .hide { display: none !important; }
-
-    @media (max-width: 560px) {
-      .container { padding: 1.25rem 0.75rem 3rem; }
-      .col-items { display: none; }
+    .modal-status { padding: 10px; border-radius: 8px; font-size: 13px; margin-top: 8px; display: none; text-align: center; }
+    .modal-status.success { background: #D1FAE5; color: #059669; display: block; }
+    .modal-status.error { background: #FEE2E2; color: #DC2626; display: block; }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+    .upload-receipt-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 14px; font-weight: 600; background: #0D1B2A; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; letter-spacing: 0.03em; }
+    .upload-receipt-btn:hover { background: #132236; }
+    .manual-entry-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 14px; font-weight: 500; background: white; color: #0D1B2A; border: 1px solid #E2E8F0; border-radius: 6px; cursor: pointer; font-family: inherit; }
+    .manual-entry-btn:hover { background: #F1F5F9; }
+    .upload-status { text-align: center; padding: 10px; font-size: 13px; border-radius: 8px; margin-bottom: 1rem; display: none; }
+    .upload-status.success { background: #D1FAE5; color: #059669; }
+    .upload-status.error { background: #FEE2E2; color: #DC2626; }
+    .upload-status.loading { background: #F8FAFC; color: #64748B; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 1rem; }
+    .tab { padding: 8px 18px; font-size: 13px; border: 1px solid #E2E8F0; border-radius: 8px; background: white; color: #64748B; cursor: pointer; font-family: inherit; }
+    .tab.active { background: #0D1B2A; color: white; border-color: #0D1B2A; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .reminder-card { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #F8FAFC; border-radius: 8px; margin-bottom: 8px; border: 1px solid #E2E8F0; }
+    .reminder-name { font-size: 14px; font-weight: 600; }
+    .reminder-due { font-size: 12px; color: #64748B; margin-top: 2px; }
+    .reminder-badge { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; }
+    .badge-soon { background: #FEF3C7; color: #92400E; }
+    .badge-upcoming { background: #D1FAE5; color: #065F46; }
+    .badge-today { background: #FEE2E2; color: #991B1B; }
+    @media (max-width: 500px) {
+      .col-photo { display: none; }
     }
+    /* --- additions for multiple jobs --- */
+    .brand { font-family:'Inter',sans-serif;font-weight:700;font-size:15px;color:#0D1B2A;letter-spacing:-0.2px; }
+    .brand span { color:#06B6D4; }
+    .jobcard { background:white;border-radius:10px;padding:1rem;border:1px solid #E2E8F0;margin-bottom:1rem;
+               display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+    .jobcard .left { display:flex;align-items:center;gap:12px;flex:1;min-width:240px; }
+    .jobcard select { flex:1;min-width:160px;padding:8px 12px;border:1px solid #E2E8F0;border-radius:6px;
+                      font-size:14px;font-family:inherit;outline:none;background:white;color:#0D1B2A; }
+    .jobcard .actions { display:flex;gap:8px;flex-wrap:wrap; }
+    .jobcard button { font-size:12px;padding:6px 12px;border:1px solid #E2E8F0;border-radius:6px;background:white;
+                      color:#0D1B2A;cursor:pointer;font-weight:500;white-space:nowrap;font-family:inherit; }
+    .jobcard button:hover { background:#F1F5F9; }
+    .jobcard button:disabled { opacity:0.5;cursor:default; }
+    .row-del { border:none;background:none;color:#94A3B8;cursor:pointer;padding:2px 6px;font-size:14px;font-family:inherit; }
+    .row-del:hover { color:#DC2626; }
+    .table-wrap { overflow-x:auto; }
+    .hide { display:none !important; }
   </style>
 </head>
 <body>
-
-<!-- password -->
-<div id="lock" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem;">
-  <div style="background:white;padding:2rem;border-radius:12px;border:1px solid #E2E8F0;text-align:center;width:300px;">
-    <div style="font-size:24px;margin-bottom:8px;">🏠</div>
-    <h2 style="font-size:16px;font-weight:600;margin-bottom:4px;">GC Tracker</h2>
-    <p style="font-size:13px;color:#64748B;margin-bottom:1.25rem;">Enter password to continue</p>
-    <input id="pwd" type="password" placeholder="Password" autocomplete="current-password"
-           style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')unlock()">
-    <button class="btn-dark" style="width:100%;padding:9px;font-size:14px;" onclick="unlock()">Enter</button>
-    <p id="lock-error" class="msg msg-error hide" style="margin-top:10px;margin-bottom:0;"></p>
-  </div>
-</div>
-
-<div id="app" class="container hide">
-  <div class="header">
-    <h1>GC<span>Tracker</span></h1>
-    <div class="header-right">
-      <span class="last-updated" id="last-updated">Loading…</span>
-      <button onclick="loadReceipts()">Refresh</button>
-      <a class="btn-link" href="/add">📷 Phone upload</a>
+  <div id="lock-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#F8FAFC;">
+    <div style="background:white;padding:2rem;border-radius:12px;border:1px solid #E2E8F0;text-align:center;width:280px;">
+      <img src="/static/icon.png" alt="" style="width:56px;height:56px;border-radius:12px;margin-bottom:10px;">
+      <h2 style="font-size:16px;font-weight:600;margin-bottom:4px;">GC Tracker</h2>
+      <p style="font-size:13px;color:#64748B;margin-bottom:1.5rem;">Enter password to continue</p>
+      <input id="pwd-input" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;padding:9px 12px;font-size:14px;border:1px solid #E2E8F0;border-radius:8px;margin-bottom:10px;font-family:inherit;outline:none;" onkeydown="if(event.key==='Enter')checkPwd()">
+      <button onclick="checkPwd()" style="width:100%;padding:9px;font-size:14px;background:#0D1B2A;color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit;">Enter</button>
+      <p id="pwd-error" style="color:#DC2626;font-size:12px;margin-top:8px;display:none;">Incorrect password</p>
     </div>
   </div>
 
-  <div class="jobbar">
-    <div class="field">
-      <label for="client">Job</label>
-      <select id="client" onchange="clientChanged()"></select>
+  <div id="main-content" style="display:none;">
+  <div class="container">
+    <div class="header">
+      <h1 id="job-title">--</h1>
+      <div class="header-right">
+        <span class="last-updated" id="last-updated">Loading...</span>
+        <button onclick="loadReceipts()">Refresh</button>
+        <a href="/add" style="font-size:13px;padding:8px 16px;border:1px solid #E2E8F0;border-radius:6px;background:white;color:#0D1B2A;text-decoration:none;">📷 Phone</a>
+      </div>
     </div>
-    <button onclick="openNewClient()">+ New client</button>
-    <button id="del-client-btn" onclick="deleteClient()">Delete job</button>
-  </div>
 
-  <div id="no-clients" class="msg msg-warn hide">
-    No jobs yet — add your first one with <strong>+ New client</strong>. That is the whole setup.
-  </div>
+    <div class="jobcard">
+      <div class="left">
+        <img src="/static/icon.png" alt="" style="width:34px;height:34px;border-radius:8px;">
+        <select id="client" onchange="clientChanged()"></select>
+      </div>
+      <div class="actions">
+        <button onclick="openNewClient()">+ New Client</button>
+        <button id="del-client-btn" onclick="deleteClient()">Delete Job</button>
+      </div>
+    </div>
 
-  <div id="dash" class="hide">
+    <div id="no-clients" class="error hide" style="margin-bottom:1rem;">
+      No jobs yet — click <strong>+ New Client</strong> to add your first one. That is the whole setup.
+    </div>
+
+    <!-- Upload Receipt Modal -->
+    <div class="modal-overlay" id="upload-modal">
+      <div class="modal">
+        <h2>📸 Upload Receipt</h2>
+        <div id="modal-body">
+          <div class="modal-analyzing">
+            <div class="modal-spinner"></div>
+            Analyzing receipt...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Client Modal -->
+    <div class="modal-overlay" id="client-modal">
+      <div class="modal">
+        <h2>New Client</h2>
+        <div class="modal-field"><label>Name</label>
+          <input id="c-name" type="text" placeholder="1041 Arbor Ln"></div>
+        <div class="modal-field"><label>Address (optional)</label>
+          <input id="c-address" type="text" placeholder="1041 Arbor Ln, Glenview IL"></div>
+        <div class="modal-field"><label>Notes (optional)</label>
+          <input id="c-notes" type="text"></div>
+        <div id="client-status" class="modal-status"></div>
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn-cancel" onclick="closeModal('client-modal')">Cancel</button>
+          <button class="modal-btn modal-btn-confirm" id="c-save" onclick="createClient()">Add Client</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="dash" class="hide">
+    <input type="file" id="receipt-file-input" accept="image/*" style="display:none">
+    <div class="btn-row">
+      <button class="upload-receipt-btn" onclick="document.getElementById('receipt-file-input').click()">
+        📸 Upload Receipt
+      </button>
+      <button class="manual-entry-btn" onclick="openManualEntry()">
+        ✏️ Manual Entry
+      </button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('overview')">📊 Overview</button>
+      <button class="tab" onclick="switchTab('bills')">🔔 Bills</button>
+    </div>
+
+    <div id="tab-overview" class="tab-content active">
     <div class="metrics">
       <div class="metric"><div class="metric-label">Total spent</div><div class="metric-value" id="m-total">--</div></div>
       <div class="metric"><div class="metric-label">Purchases</div><div class="metric-value green" id="m-purchases">--</div></div>
@@ -169,83 +215,49 @@
     <div class="section">
       <div class="section-title">Spending by category</div>
       <div class="legend" id="chart-legend"></div>
-      <div id="chart-unavailable" class="msg msg-warn hide">Chart could not load. The totals above and the table below are unaffected.</div>
-      <div style="height:240px;"><canvas id="catChart"></canvas></div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Add a receipt</div>
-      <button class="btn-dark" style="width:100%;padding:13px;font-size:14px;" onclick="document.getElementById('deskphoto').click()">
-        Upload receipt photo
-      </button>
-      <input id="deskphoto" type="file" accept="image/*" class="hide" onchange="deskPhoto(this)">
-      <div style="font-size:12px;color:#94A3B8;margin-top:8px;text-align:center;">
-        Claude reads it, then you confirm before it saves.
+      <div id="chart-unavailable" class="error hide" style="margin-bottom:12px;">Chart could not load. The totals above and the log below are unaffected.</div>
+      <div id="chart-box" style="position:relative;width:100%;height:260px;">
+        <canvas id="catChart" role="img" aria-label="Bar chart of spending by category"></canvas>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-title">Bills due</div>
-      <div id="bills-list"></div>
-      <div class="row2" style="margin-top:10px;">
-        <div><label for="b-name">Bill</label><input id="b-name" type="text" placeholder="ComEd"></div>
-        <div class="row2">
-          <div><label for="b-day">Due day</label><input id="b-day" type="number" min="1" max="31" placeholder="15"></div>
-          <div><label for="b-amount">Amount</label><input id="b-amount" type="number" step="0.01" placeholder="optional"></div>
-        </div>
-      </div>
-      <div id="bill-error" class="msg msg-error hide" style="margin-top:10px;"></div>
-      <button style="width:100%;margin-top:10px;padding:10px;" onclick="addBill()">+ Add bill</button>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Receipts</div>
-      <div id="table-container"><div class="loading">Loading…</div></div>
+      <div class="section-title">Receipt log</div>
+      <div id="table-container"><div class="loading">Loading receipts...</div></div>
       <button class="download-btn" onclick="downloadExcel()">Download Excel</button>
     </div>
-  </div>
-</div>
+    </div><!-- end tab-overview -->
 
-<!-- new client -->
-<div class="modal-overlay" id="client-modal">
-  <div class="modal">
-    <h2>New client</h2>
-    <div class="modal-field"><label for="c-name">Name</label>
-      <input id="c-name" type="text" placeholder="1041 Arbor Ln"></div>
-    <div class="modal-field"><label for="c-address">Address (optional)</label>
-      <input id="c-address" type="text" placeholder="1041 Arbor Ln, Glenview IL"></div>
-    <div class="modal-field"><label for="c-notes">Notes (optional)</label>
-      <textarea id="c-notes"></textarea></div>
-    <div id="client-error" class="msg msg-error hide"></div>
-    <div class="modal-actions">
-      <button class="modal-btn" onclick="closeModal('client-modal')">Cancel</button>
-      <button class="modal-btn btn-dark" id="c-save" onclick="createClient()">Add client</button>
+    <div id="tab-bills" class="tab-content">
+      <div class="section">
+        <div class="section-title">Add Bill</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div>
+            <label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px;">Bill Name</label>
+            <input type="text" id="b-name" placeholder="e.g. ComEd, Nicor" style="width:100%;padding:8px 12px;font-size:14px;border:1px solid #E2E8F0;border-radius:8px;font-family:inherit;outline:none;">
+          </div>
+          <div>
+            <label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px;">Due Day (1-31)</label>
+            <input type="number" id="b-day" placeholder="e.g. 15" min="1" max="31" style="width:100%;padding:8px 12px;font-size:14px;border:1px solid #E2E8F0;border-radius:8px;font-family:inherit;outline:none;">
+          </div>
+        </div>
+        <button onclick="addBill()" style="width:100%;padding:10px;font-size:14px;background:#0D1B2A;color:white;border:none;border-radius:6px;cursor:pointer;font-family:inherit;margin-bottom:8px;font-weight:600;">+ Add Bill</button>
+        <div id="bill-add-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Bills Due</div>
+        <div id="bills-container"><div class="loading">Loading bills...</div></div>
+      </div>
     </div>
-  </div>
-</div>
+    </div><!-- end dash -->
 
-<!-- receipt review -->
-<div class="modal-overlay" id="receipt-modal">
-  <div class="modal" id="receipt-modal-body"></div>
-</div>
+  </div>
+  </div>
 
 <script>
   const API_BASE = '';
   const PWD_KEY = 'gct_password';
   const CLIENT_KEY = 'gct_last_client';
-
-  let password = '';
-  let clients = [];
-  let receipts = [];
-  let chart = null;
-  let deskImageB64 = null;
-  let deskImageUrl = null;
-
-  const $ = id => document.getElementById(id);
-  const show = (id, on) => $(id).classList.toggle('hide', !on);
-  const money = n => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
-    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const CAT_COLORS = {
     'Materials': '#1D9E75',
@@ -254,6 +266,20 @@
     'MISC': '#888780'
   };
 
+  let password = '';
+  let clients = [];
+  let allReceipts = [];
+  let catChartInstance = null;
+  let currentImageBase64 = null;
+  let currentImageUrl = null;
+
+  const $ = id => document.getElementById(id);
+  const show = (id, on) => $(id).classList.toggle('hide', !on);
+  const money = n => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const today = () => new Date().toISOString().slice(0, 10);
+
   function api(path, options = {}) {
     const headers = Object.assign({}, options.headers || {}, { 'X-Admin-Password': password });
     return fetch(API_BASE + path, Object.assign({}, options, { headers }));
@@ -261,30 +287,41 @@
 
   // --- password ---------------------------------------------------------
 
-  async function unlock() {
-    const value = $('pwd').value;
+  async function checkPwd() {
+    const value = $('pwd-input').value;
     if (!value) return;
     try {
       const r = await fetch(API_BASE + '/auth-check', { headers: { 'X-Admin-Password': value } });
       if (!(await r.json()).ok) {
-        $('lock-error').textContent = 'Wrong password.';
-        show('lock-error', true);
-        $('pwd').value = '';
+        $('pwd-error').textContent = 'Incorrect password';
+        $('pwd-error').style.display = 'block';
+        $('pwd-input').value = '';
         return;
       }
       password = value;
       try { localStorage.setItem(PWD_KEY, value); } catch (e) {}
-      start();
+      startApp();
     } catch (e) {
-      $('lock-error').textContent = 'Cannot reach the server.';
-      show('lock-error', true);
+      $('pwd-error').textContent = 'Cannot reach the server';
+      $('pwd-error').style.display = 'block';
     }
   }
 
-  async function start() {
-    $('lock').style.display = 'none';
-    show('app', true);
-    await loadClients();
+  function startApp() {
+    $('lock-screen').style.display = 'none';
+    $('main-content').style.display = 'block';
+    loadClients();
+  }
+
+  // --- tabs -------------------------------------------------------------
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    $('tab-' + name).classList.add('active');
+    [...document.querySelectorAll('.tab')].find(t =>
+      t.getAttribute('onclick').includes("'" + name + "'")).classList.add('active');
+    if (name === 'bills') loadBills();
   }
 
   // --- clients ----------------------------------------------------------
@@ -297,12 +334,12 @@
     clients.forEach(c => {
       const o = document.createElement('option');
       o.value = c.id;
-      o.textContent = c.name + (c.receipt_count ? ` (${c.receipt_count})` : '');
+      o.textContent = c.name + (c.receipt_count ? ' (' + c.receipt_count + ')' : '');
       sel.appendChild(o);
     });
 
-    // A /c/<slug> URL wins over the remembered job, so a link always opens
-    // the job it names.
+    // A /c/<slug> URL wins over the remembered job, so a shared link always
+    // opens the job it names.
     const m = window.location.pathname.match(/^\/c\/([^/]+)$/);
     const fromUrl = m && clients.find(c => c.slug === decodeURIComponent(m[1]));
     if (fromUrl) {
@@ -317,30 +354,32 @@
     show('no-clients', none);
     show('dash', !none);
     $('del-client-btn').disabled = none;
+    $('job-title').textContent = none ? 'No jobs yet' : (currentClient() || {}).name;
     if (!none) { syncUrl(); await loadReceipts(); }
   }
 
-  function currentClientId() { return parseInt($('client').value, 10); }
-  function currentClient() { return clients.find(c => c.id === currentClientId()); }
-
-  function clientChanged() {
-    try { localStorage.setItem(CLIENT_KEY, $('client').value); } catch (e) {}
-    syncUrl();
-    loadReceipts();
-  }
+  const currentClientId = () => parseInt($('client').value, 10);
+  const currentClient = () => clients.find(c => c.id === currentClientId());
 
   function syncUrl() {
     const c = currentClient();
     if (!c) return;
     const path = '/c/' + c.slug;
-    if (window.location.pathname !== path) {
-      window.history.replaceState({}, '', path);
-    }
+    if (window.location.pathname !== path) window.history.replaceState({}, '', path);
+  }
+
+  function clientChanged() {
+    try { localStorage.setItem(CLIENT_KEY, $('client').value); } catch (e) {}
+    const c = currentClient();
+    $('job-title').textContent = c ? c.name : '--';
+    syncUrl();
+    loadReceipts();
+    if ($('tab-bills').classList.contains('active')) loadBills();
   }
 
   function openNewClient() {
     $('c-name').value = ''; $('c-address').value = ''; $('c-notes').value = '';
-    show('client-error', false);
+    $('client-status').className = 'modal-status';
     $('client-modal').classList.add('active');
     $('c-name').focus();
   }
@@ -349,13 +388,10 @@
 
   async function createClient() {
     const name = $('c-name').value.trim();
-    if (!name) {
-      $('client-error').textContent = 'Name is required.';
-      show('client-error', true);
-      return;
-    }
+    const status = $('client-status');
+    if (!name) { status.className = 'modal-status error'; status.textContent = 'Name is required'; return; }
     const btn = $('c-save');
-    btn.disabled = true; btn.textContent = 'Adding…';
+    btn.disabled = true; btn.textContent = 'Adding...';
     try {
       const r = await api('/clients', {
         method: 'POST',
@@ -368,21 +404,22 @@
       try { localStorage.setItem(CLIENT_KEY, data.id); } catch (e) {}
       await loadClients();
       $('client').value = data.id;
-      await loadReceipts();
+      clientChanged();
     } catch (e) {
-      $('client-error').textContent = e.message;
-      show('client-error', true);
+      status.className = 'modal-status error';
+      status.textContent = e.message;
     } finally {
-      btn.disabled = false; btn.textContent = 'Add client';
+      btn.disabled = false; btn.textContent = 'Add Client';
     }
   }
 
   async function deleteClient() {
     const c = currentClient();
     if (!c) return;
-    if (!confirm(`Delete "${c.name}" and all ${c.receipt_count || 0} of its receipts? This cannot be undone.`)) return;
+    if (!confirm('Delete "' + c.name + '" and all ' + (c.receipt_count || 0) + ' of its receipts? This cannot be undone.')) return;
     await api('/clients/' + c.id, { method: 'DELETE' });
     try { localStorage.removeItem(CLIENT_KEY); } catch (e) {}
+    window.history.replaceState({}, '', '/');
     await loadClients();
   }
 
@@ -391,18 +428,17 @@
   async function loadReceipts() {
     const id = currentClientId();
     if (!id) return;
-    $('last-updated').textContent = 'Refreshing…';
+    $('last-updated').textContent = 'Refreshing...';
     try {
       const r = await api('/clients/' + id + '/receipts');
-      receipts = await r.json();
+      allReceipts = await r.json();
     } catch (e) {
       $('last-updated').textContent = 'Could not load';
       $('table-container').innerHTML = '<div class="loading">Could not load receipts.</div>';
       return;
     }
     // Render each piece separately: a chart library that failed to load must
-    // not be able to take the receipts table down with it.
-    loadBills();
+    // not be able to take the receipt log down with it.
     try { renderMetrics(); } catch (e) { console.error(e); }
     try { renderChart(); } catch (e) { console.error(e); }
     try { renderTable(); } catch (e) { console.error(e); }
@@ -411,16 +447,16 @@
 
   function renderMetrics() {
     let purchases = 0, returns = 0;
-    receipts.forEach(r => { if (r.amount < 0) returns += Math.abs(r.amount); else purchases += r.amount; });
+    allReceipts.forEach(r => { if (r.amount < 0) returns += Math.abs(r.amount); else purchases += r.amount; });
     $('m-total').textContent = money(purchases - returns);
     $('m-purchases').textContent = money(purchases);
     $('m-returns').textContent = money(returns);
-    $('m-count').textContent = receipts.length;
+    $('m-count').textContent = allReceipts.length;
   }
 
   function renderChart() {
     const cats = {};
-    receipts.filter(r => r.type === 'purchase').forEach(r => {
+    allReceipts.filter(r => r.type === 'purchase').forEach(r => {
       cats[r.category] = (cats[r.category] || 0) + Math.abs(r.amount);
     });
     const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
@@ -429,16 +465,20 @@
     const colors = labels.map(l => CAT_COLORS[l] || '#888780');
 
     $('chart-legend').innerHTML = labels.map((l, i) =>
-      `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${esc(l)} ${money(values[i])}</span>`
-    ).join('');
+      '<span class="legend-item"><span class="legend-dot" style="background:' + colors[i] + '"></span>' +
+      esc(l) + ' $' + values[i].toFixed(2) + '</span>').join('');
 
     if (typeof Chart === 'undefined') {
-      $('chart-unavailable').classList.remove('hide');
+      // Collapse the canvas too, so a missing library leaves a one-line note
+      // rather than a tall empty box.
+      show('chart-unavailable', true);
+      show('chart-box', false);
       return;
     }
-    $('chart-unavailable').classList.add('hide');
-    if (chart) chart.destroy();
-    chart = new Chart($('catChart').getContext('2d'), {
+    show('chart-unavailable', false);
+    show('chart-box', true);
+    if (catChartInstance) catChartInstance.destroy();
+    catChartInstance = new Chart($('catChart').getContext('2d'), {
       type: 'bar',
       data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0, borderRadius: 4 }] },
       options: {
@@ -453,103 +493,40 @@
   }
 
   function renderTable() {
-    if (receipts.length === 0) {
+    if (allReceipts.length === 0) {
       $('table-container').innerHTML = '<div class="loading">No receipts yet</div>';
       return;
     }
-    const rows = receipts.map(r => {
+    const rows = allReceipts.map(r => {
       const isReturn = r.amount < 0;
-      const view = r.has_image
-        ? `<a href="${API_BASE}/receipts/${r.id}/image?key=${encodeURIComponent(password)}" target="_blank" rel="noopener">view</a>`
-        : '<span style="color:#CBD5E1">—</span>';
-      return `<tr>
-        <td style="width:92px">${esc(r.date)}</td>
-        <td style="width:150px" title="${esc(r.store)}">${esc(r.store)}</td>
-        <td style="width:110px">${esc(r.category)}</td>
-        <td style="width:86px"><span class="badge ${isReturn ? 'badge-return' : 'badge-purchase'}">${esc(r.type)}</span></td>
-        <td style="width:92px" class="${isReturn ? 'amount-neg' : 'amount-pos'}">${isReturn ? '-' : '+'}${money(r.amount)}</td>
-        <td class="col-items" title="${esc(r.items)}">${esc(r.items)}</td>
-        <td style="width:56px">${view}</td>
-        <td style="width:44px"><button class="row-del" title="Delete receipt" onclick="deleteReceipt(${r.id})">✕</button></td>
-      </tr>`;
+      const photoLink = r.has_image
+        ? '<a href="' + API_BASE + '/receipts/' + r.id + '/image?key=' + encodeURIComponent(password) + '" target="_blank" rel="noopener">view</a>'
+        : '';
+      return '<tr>' +
+        '<td style="width:90px">' + esc(r.date) + '</td>' +
+        '<td style="width:130px">' + esc(r.store) + '</td>' +
+        '<td style="width:100px">' + esc(r.category) + '</td>' +
+        '<td style="width:70px"><span class="badge ' + (isReturn ? 'badge-return' : 'badge-purchase') + '">' + esc(r.type) + '</span></td>' +
+        '<td style="width:75px" class="' + (isReturn ? 'amount-neg' : 'amount-pos') + '">' + (isReturn ? '-' : '+') + money(r.amount) + '</td>' +
+        '<td style="width:180px;color:#64748B;font-size:12px;">' + esc(r.items) + '</td>' +
+        '<td class="col-photo" style="width:50px">' + photoLink + '</td>' +
+        '<td style="width:40px"><button class="row-del" title="Delete receipt" onclick="deleteReceipt(' + r.id + ')">✕</button></td>' +
+        '</tr>';
     }).join('');
 
-    $('table-container').innerHTML = `<div class="table-wrap"><table>
-      <thead><tr>
-        <th style="width:92px">Date</th><th style="width:150px">Store</th>
-        <th style="width:110px">Category</th><th style="width:86px">Type</th>
-        <th style="width:92px">Amount</th><th class="col-items">Items</th>
-        <th style="width:56px">Photo</th><th style="width:44px"></th>
-      </tr></thead><tbody>${rows}</tbody></table></div>`;
+    $('table-container').innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+      '<th style="width:90px">Date</th><th style="width:130px">Store</th>' +
+      '<th style="width:100px">Category</th><th style="width:70px">Type</th>' +
+      '<th style="width:75px">Amount</th><th style="width:180px">Items</th>' +
+      '<th class="col-photo" style="width:50px">Photo</th><th style="width:40px"></th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
   async function deleteReceipt(id) {
-    const r = receipts.find(x => x.id === id);
-    if (!confirm(`Delete the ${r ? r.store : ''} receipt? This cannot be undone.`)) return;
+    const r = allReceipts.find(x => x.id === id);
+    if (!confirm('Delete the ' + (r ? r.store : '') + ' receipt? This cannot be undone.')) return;
     await api('/receipts/' + id, { method: 'DELETE' });
     await loadClients();
-  }
-
-  // --- bills ------------------------------------------------------------
-
-  async function loadBills() {
-    const id = currentClientId();
-    if (!id) return;
-    try {
-      const r = await api('/clients/' + id + '/bills');
-      renderBills(await r.json());
-    } catch (e) {
-      $('bills-list').innerHTML = '<div class="loading">Could not load bills.</div>';
-    }
-  }
-
-  function renderBills(bills) {
-    if (!bills.length) {
-      $('bills-list').innerHTML = '<div class="loading" style="padding:1rem;">No bills yet</div>';
-      return;
-    }
-    $('bills-list').innerHTML = bills.map(b => {
-      const d = b.days_away;
-      const cls = d === 0 ? 'badge-today' : (d <= 7 ? 'badge-soon' : 'badge-upcoming');
-      const when = d === 0 ? 'Due today' : (d === 1 ? 'Due tomorrow' : 'In ' + d + ' days');
-      const pretty = new Date(b.next_due + 'T00:00:00')
-        .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      return `<div class="bill-row">
-        <div>
-          <div class="bill-name">${esc(b.name)}${b.amount != null ? ' · ' + money(b.amount) : ''}</div>
-          <div class="bill-due">${pretty} · day ${b.due_day} each month</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="badge ${cls}">${when}</span>
-          <button class="row-del" title="Remove bill" onclick="deleteBill(${b.id})">✕</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  async function addBill() {
-    const name = $('b-name').value.trim();
-    const day = parseInt($('b-day').value, 10);
-    const err = $('bill-error');
-    if (!name) { err.textContent = 'Bill name is required.'; show('bill-error', true); return; }
-    if (isNaN(day) || day < 1 || day > 31) { err.textContent = 'Due day must be 1-31.'; show('bill-error', true); return; }
-    show('bill-error', false);
-    const amount = parseFloat($('b-amount').value);
-    const r = await api('/clients/' + currentClientId() + '/bills', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, due_day: day, amount: isNaN(amount) ? null : amount })
-    });
-    const data = await r.json();
-    if (!r.ok) { err.textContent = data.error || 'Could not add bill.'; show('bill-error', true); return; }
-    $('b-name').value = ''; $('b-day').value = ''; $('b-amount').value = '';
-    loadBills();
-  }
-
-  async function deleteBill(id) {
-    if (!confirm('Remove this bill?')) return;
-    await api('/bills/' + id, { method: 'DELETE' });
-    loadBills();
   }
 
   function downloadExcel() {
@@ -559,9 +536,9 @@
     }
     const client = currentClient();
     const ws_data = [['Date', 'Store', 'Category', 'Type', 'Amount ($)', 'Items', 'Notes']];
-    receipts.forEach(r => ws_data.push([r.date, r.store, r.category, r.type, r.amount, r.items, r.notes]));
+    allReceipts.forEach(r => ws_data.push([r.date, r.store, r.category, r.type, r.amount, r.items, r.notes]));
     const cats = {};
-    receipts.filter(r => r.type === 'purchase').forEach(r => {
+    allReceipts.filter(r => r.type === 'purchase').forEach(r => {
       cats[r.category] = (cats[r.category] || 0) + Math.abs(r.amount);
     });
     const wb = XLSX.utils.book_new();
@@ -570,7 +547,7 @@
     XLSX.writeFile(wb, (client ? client.slug : 'receipts') + '-receipts.xlsx');
   }
 
-  // --- upload from desktop ----------------------------------------------
+  // --- upload / manual entry --------------------------------------------
 
   function downscale(file, maxDim = 1600, quality = 0.85) {
     return new Promise((resolve, reject) => {
@@ -580,12 +557,12 @@
         const img = new Image();
         img.onerror = () => reject(new Error('Could not open the photo'));
         img.onload = () => {
-          let { width, height } = img;
-          const scale = Math.min(1, maxDim / Math.max(width, height));
-          width = Math.round(width * scale); height = Math.round(height * scale);
+          let w = img.width, h = img.height;
+          const scale = Math.min(1, maxDim / Math.max(w, h));
+          w = Math.round(w * scale); h = Math.round(h * scale);
           const canvas = document.createElement('canvas');
-          canvas.width = width; canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
           resolve(canvas.toDataURL('image/jpeg', quality));
         };
         img.src = reader.result;
@@ -602,111 +579,169 @@
     return new Blob([buf], { type: head.match(/:(.*?);/)[1] });
   }
 
-  async function deskPhoto(input) {
-    const file = input.files && input.files[0];
-    input.value = '';
+  document.getElementById('receipt-file-input').addEventListener('change', async function () {
+    const file = this.files && this.files[0];
+    this.value = '';
     if (!file) return;
 
-    $('receipt-modal').classList.add('active');
-    $('receipt-modal-body').innerHTML =
-      '<div style="text-align:center;padding:2rem;color:#64748B;"><div class="spinner"></div>Reading receipt…</div>';
-
+    $('upload-modal').classList.add('active');
+    $('modal-body').innerHTML = '<div class="modal-analyzing"><div class="modal-spinner"></div>Analyzing receipt...</div>';
     try {
       const dataUrl = await downscale(file);
-      deskImageUrl = dataUrl;
-      deskImageB64 = dataUrl.split(',')[1];
+      currentImageUrl = dataUrl;
+      currentImageBase64 = dataUrl.split(',')[1];
       const form = new FormData();
       form.append('photo', dataUrlToBlob(dataUrl), 'receipt.jpg');
       const r = await api('/analyze', { method: 'POST', body: form });
       const data = await r.json();
-      receiptForm(data.success ? (data.receipt || {}) : {},
-                  data.success ? '' : (data.error || 'Could not read it — fill it in below.'));
+      receiptForm(data.success ? (data.receipt || {}) : {}, data.success ? '' : (data.error || 'Could not read it — fill it in below.'));
     } catch (e) {
       receiptForm({}, e.message || 'Could not read it — fill it in below.');
     }
+  });
+
+  function openManualEntry() {
+    currentImageBase64 = null;
+    currentImageUrl = null;
+    $('upload-modal').classList.add('active');
+    receiptForm({}, '');
   }
 
   function receiptForm(r, warning) {
-    const today = new Date().toISOString().slice(0, 10);
     const items = Array.isArray(r.items) ? r.items.join(', ') : (r.items || '');
     const cat = ['Materials', 'Labor', 'Mortgage', 'MISC'].includes(r.category) ? r.category : 'MISC';
-    $('receipt-modal-body').innerHTML = `
-      <h2>Check and save</h2>
-      ${deskImageUrl ? `<img class="modal-preview" src="${deskImageUrl}" alt="Receipt">` : ''}
-      <div id="r-msg" class="msg msg-warn ${warning ? '' : 'hide'}">${esc(warning)}</div>
-      <div class="modal-field"><label>Store</label><input id="r-store" type="text" value="${esc(r.store || '')}"></div>
-      <div class="row2">
-        <div class="modal-field"><label>Amount</label>
-          <input id="r-amount" type="number" step="0.01" value="${r.total != null ? r.total : ''}"></div>
-        <div class="modal-field"><label>Date</label>
-          <input id="r-date" type="date" value="${esc(r.date || today)}"></div>
-      </div>
-      <div class="row2">
-        <div class="modal-field"><label>Category</label><select id="r-category">
-          ${['Materials', 'Labor', 'Mortgage', 'MISC'].map(c =>
-            `<option${c === cat ? ' selected' : ''}>${c}</option>`).join('')}
-        </select></div>
-        <div class="modal-field"><label>Type</label><select id="r-type">
-          <option value="purchase"${r.type !== 'return' ? ' selected' : ''}>Purchase</option>
-          <option value="return"${r.type === 'return' ? ' selected' : ''}>Return</option>
-        </select></div>
-      </div>
-      <div class="modal-field"><label>Items</label><input id="r-items" type="text" value="${esc(items)}"></div>
-      <div class="modal-field"><label>Notes</label><textarea id="r-notes">${esc(r.notes || '')}</textarea></div>
-      <div class="modal-actions">
-        <button class="modal-btn" onclick="closeModal('receipt-modal')">Cancel</button>
-        <button class="modal-btn btn-dark" id="r-save" onclick="saveReceipt(false)">Save receipt</button>
-      </div>`;
+    $('modal-body').innerHTML =
+      (currentImageUrl ? '<img class="modal-preview" src="' + currentImageUrl + '" alt="Receipt">' : '') +
+      '<div id="m-status" class="modal-status ' + (warning ? 'error' : '') + '">' + esc(warning) + '</div>' +
+      '<div class="modal-field"><label>Store</label><input id="m-store" type="text" value="' + esc(r.store || '') + '"></div>' +
+      '<div class="modal-field"><label>Amount</label><input id="m-amount" type="number" step="0.01" value="' + (r.total != null ? r.total : '') + '"></div>' +
+      '<div class="modal-field"><label>Date</label><input id="m-date" type="date" value="' + esc(r.date || today()) + '"></div>' +
+      '<div class="modal-field"><label>Category</label><select id="m-category">' +
+        ['Materials', 'Labor', 'Mortgage', 'MISC'].map(c => '<option' + (c === cat ? ' selected' : '') + '>' + c + '</option>').join('') +
+      '</select></div>' +
+      '<div class="modal-field"><label>Type</label><select id="m-type">' +
+        '<option value="purchase"' + (r.type !== 'return' ? ' selected' : '') + '>Purchase</option>' +
+        '<option value="return"' + (r.type === 'return' ? ' selected' : '') + '>Return</option>' +
+      '</select></div>' +
+      '<div class="modal-field"><label>Items</label><input id="m-items" type="text" value="' + esc(items) + '"></div>' +
+      '<div class="modal-field"><label>Notes</label><input id="m-notes" type="text" value="' + esc(r.notes || '') + '"></div>' +
+      '<div class="modal-actions">' +
+        '<button class="modal-btn modal-btn-cancel" onclick="closeModal(\'upload-modal\')">Cancel</button>' +
+        '<button class="modal-btn modal-btn-confirm" id="m-save" onclick="saveReceipt(false)">Save</button>' +
+      '</div>';
+    if (warning) $('m-status').style.display = 'block';
   }
 
   async function saveReceipt(force) {
-    const btn = $('r-save');
-    const amount = parseFloat($('r-amount').value);
-    const store = $('r-store').value.trim();
-    const msg = $('r-msg');
+    const btn = $('m-save');
+    const status = $('m-status');
+    const amount = parseFloat($('m-amount').value);
+    const store = $('m-store').value.trim();
     const fail = text => {
-      msg.textContent = text; msg.className = 'msg msg-error';
-      btn.disabled = false; btn.textContent = 'Save receipt';
+      status.className = 'modal-status error'; status.textContent = text; status.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Save';
     };
-    if (!store) return fail('Store is required.');
-    if (isNaN(amount)) return fail('Amount is required.');
+    if (!store) return fail('Store is required');
+    if (isNaN(amount)) return fail('Amount is required');
 
-    btn.disabled = true; btn.textContent = 'Saving…';
+    btn.disabled = true; btn.textContent = 'Saving...';
     try {
       const r = await api('/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: currentClientId(),
-          date: $('r-date').value || new Date().toISOString().slice(0, 10),
-          store, category: $('r-category').value, type: $('r-type').value, amount,
-          items: $('r-items').value.trim(), notes: $('r-notes').value.trim(),
-          image_base64: deskImageB64, source: 'dashboard', force: !!force
+          date: $('m-date').value || today(),
+          store, category: $('m-category').value, type: $('m-type').value, amount,
+          items: $('m-items').value.trim(), notes: $('m-notes').value.trim(),
+          image_base64: currentImageBase64, source: 'dashboard', force: !!force
         })
       });
       const data = await r.json();
 
       if (data.duplicate) {
-        msg.className = 'msg msg-warn';
-        msg.textContent = data.error + ' ';
+        status.className = 'modal-status error';
+        status.textContent = data.error + ' ';
+        status.style.display = 'block';
         const again = document.createElement('button');
         again.textContent = 'Save anyway';
-        again.className = 'btn-dark';
-        again.style.marginTop = '8px';
+        again.style.cssText = 'margin-top:8px;width:100%;padding:8px;background:#0D1B2A;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;';
         again.onclick = () => saveReceipt(true);
-        msg.appendChild(again);
-        msg.classList.remove('hide');
-        btn.disabled = false; btn.textContent = 'Save receipt';
+        status.appendChild(again);
+        btn.disabled = false; btn.textContent = 'Save';
         return;
       }
-      if (!data.success) return fail(data.error || 'Could not save.');
+      if (!data.success) return fail(data.error || 'Could not save');
 
-      closeModal('receipt-modal');
-      deskImageB64 = null; deskImageUrl = null;
+      closeModal('upload-modal');
+      currentImageBase64 = null; currentImageUrl = null;
       await loadClients();
     } catch (e) {
-      fail('Cannot reach the server.');
+      fail('Cannot reach the server');
     }
+  }
+
+  // --- bills ------------------------------------------------------------
+
+  async function loadBills() {
+    const id = currentClientId();
+    if (!id) return;
+    try {
+      const r = await api('/clients/' + id + '/bills');
+      renderBills(await r.json());
+    } catch (e) {
+      $('bills-container').innerHTML = '<div class="loading">Could not load bills.</div>';
+    }
+  }
+
+  function renderBills(bills) {
+    if (!bills.length) {
+      $('bills-container').innerHTML = '<div class="loading">No bills yet</div>';
+      return;
+    }
+    $('bills-container').innerHTML = bills.map(b => {
+      const d = b.days_away;
+      const cls = d === 0 ? 'badge-today' : (d <= 7 ? 'badge-soon' : 'badge-upcoming');
+      const when = d === 0 ? 'Due today' : (d === 1 ? 'Tomorrow' : 'In ' + d + ' days');
+      const pretty = new Date(b.next_due + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return '<div class="reminder-card">' +
+        '<div><div class="reminder-name">' + esc(b.name) + (b.amount != null ? ' · ' + money(b.amount) : '') + '</div>' +
+        '<div class="reminder-due">' + pretty + ' · day ' + b.due_day + ' each month</div></div>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span class="reminder-badge ' + cls + '">' + when + '</span>' +
+        '<button class="row-del" title="Remove bill" onclick="deleteBill(' + b.id + ')">✕</button></div></div>';
+    }).join('');
+  }
+
+  async function addBill() {
+    const name = $('b-name').value.trim();
+    const day = parseInt($('b-day').value, 10);
+    const status = $('bill-add-status');
+    const say = (text, ok) => {
+      status.textContent = text;
+      status.style.display = 'block';
+      status.style.background = ok ? '#D1FAE5' : '#FEE2E2';
+      status.style.color = ok ? '#059669' : '#DC2626';
+    };
+    if (!name) return say('Bill name is required', false);
+    if (isNaN(day) || day < 1 || day > 31) return say('Due day must be 1-31', false);
+
+    const r = await api('/clients/' + currentClientId() + '/bills', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, due_day: day })
+    });
+    const data = await r.json();
+    if (!r.ok) return say(data.error || 'Could not add bill', false);
+    say('Added', true);
+    $('b-name').value = ''; $('b-day').value = '';
+    loadBills();
+  }
+
+  async function deleteBill(id) {
+    if (!confirm('Remove this bill?')) return;
+    await api('/bills/' + id, { method: 'DELETE' });
+    loadBills();
   }
 
   // --- boot -------------------------------------------------------------
@@ -717,10 +752,9 @@
     if (saved) {
       try {
         const r = await fetch(API_BASE + '/auth-check', { headers: { 'X-Admin-Password': saved } });
-        if ((await r.json()).ok) { password = saved; await start(); return; }
+        if ((await r.json()).ok) { password = saved; startApp(); return; }
       } catch (e) {}
     }
-    $('lock').style.display = 'flex';
   })();
 </script>
 </body>
