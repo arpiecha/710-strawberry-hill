@@ -103,11 +103,19 @@
     /* --- additions for multiple jobs --- */
     .brand { font-family:'Inter',sans-serif;font-weight:700;font-size:15px;color:#0D1B2A;letter-spacing:-0.2px; }
     .brand span { color:#06B6D4; }
-    .title-left { display:flex;align-items:center;gap:10px;min-width:0; }
-    .logo-mark { width:34px;height:34px;border-radius:8px;flex-shrink:0; }
-    .header-right select { padding:7px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;
-                           font-family:inherit;outline:none;background:white;color:#0D1B2A;max-width:220px; }
-    .header-right button:disabled { opacity:0.5;cursor:default; }
+    .header { align-items:flex-start; }
+    .header-left { display:flex;align-items:center;gap:10px;flex-wrap:wrap;order:1; }
+    .header-left select { padding:7px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;
+                          font-family:inherit;outline:none;background:white;color:#0D1B2A;max-width:220px; }
+    .header-left button:disabled { opacity:0.5;cursor:default; }
+    .brand-block { display:flex;flex-direction:column;align-items:flex-end;gap:6px;order:2;text-align:right;min-width:0; }
+    .brand-block h1 { font-size:22px;font-weight:600;line-height:1.2; }
+    .logo-mark { width:56px;height:56px;border-radius:12px;flex-shrink:0; }
+    @media (max-width:560px) {
+      .header { flex-direction:column-reverse;align-items:stretch;gap:12px; }
+      .brand-block { align-items:center;text-align:center; }
+      .header-left { justify-content:center; }
+    }
     .job-admin { display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:1.5rem 0 0.5rem; }
     .job-admin button { font-size:12px;padding:6px 14px;color:#64748B; }
     .row-del { border:none;background:none;color:#94A3B8;cursor:pointer;padding:2px 6px;font-size:14px;font-family:inherit; }
@@ -131,16 +139,16 @@
   <div id="main-content" style="display:none;">
   <div class="container">
     <div class="header">
-      <div class="title-left">
+      <div class="header-left">
+        <select id="client" onchange="clientChanged()" class="hide"></select>
+        <button onclick="loadReceipts()">Refresh</button>
+        <span class="last-updated" id="last-updated">Loading...</span>
+      </div>
+      <div class="brand-block">
         <img src="/static/icon.png" alt="GC Tracker" class="logo-mark">
         <h1 id="job-title">--</h1>
       </div>
-      <div class="header-right">
-        <select id="client" onchange="clientChanged()" class="hide"></select>
-        <button onclick="loadReceipts()">Refresh</button>
-      </div>
     </div>
-    <div class="last-updated" id="last-updated" style="margin:-0.75rem 0 1rem;">Loading...</div>
 
     <div id="start-card" style="background:white;border-radius:10px;padding:1rem;border:1px solid #E2E8F0;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:12px;">
       <div style="display:flex;align-items:center;gap:12px;">
