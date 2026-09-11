@@ -8,4 +8,4 @@
   </linearGradient>
 </defs>
 <rect width="512" height="512" fill="url(#bg)"/>
-<circle cx="256" cy="256" r="174" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" stroke-dasharray="800 293" transform="rotate(48 256 256)"/><text x="256" y="260" font-family="Space Grotesk" font-weight="700" font-size="226" text-anchor="middle" dominant-baseline="central" fill="url(#cy)" >G</text></svg>
+<text x="186" y="258" font-family="Space Grotesk" font-weight="700" font-size="250" text-anchor="middle" dominant-baseline="central" fill="url(#cy)" >G</text><text x="330" y="258" font-family="Space Grotesk" font-weight="700" font-size="250" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" >C</text></svg>
