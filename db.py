@@ -4,6 +4,7 @@ One Postgres database holds every client and every receipt, so adding a new
 client is a row rather than a new deployment.
 """
 
+import calendar
 import os
 import re
 from datetime import date, datetime
@@ -49,6 +50,9 @@ class Client(Base):
     )
 
     receipts: Mapped[list["Receipt"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan", passive_deletes=True
+    )
+    bills: Mapped[list["Bill"]] = relationship(
         back_populates="client", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -103,6 +107,52 @@ class Receipt(Base):
             "has_image": bool(self.image_path),
             "source": self.source,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Bill(Base):
+    """A recurring bill for a job. A list on the dashboard — nothing is sent."""
+
+    __tablename__ = "bills"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    client_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    due_day: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-31
+    amount: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    client: Mapped[Client] = relationship(back_populates="bills")
+
+    def next_due(self, today: date | None = None) -> date:
+        """The next date this falls due, clamped to short months."""
+        today = today or date.today()
+        year, month = today.year, today.month
+        day = min(self.due_day, calendar.monthrange(year, month)[1])
+        if day < today.day:
+            month += 1
+            if month > 12:
+                month, year = 1, year + 1
+            day = min(self.due_day, calendar.monthrange(year, month)[1])
+        return date(year, month, day)
+
+    def to_dict(self, today: date | None = None) -> dict:
+        today = today or date.today()
+        due = self.next_due(today)
+        return {
+            "id": self.id,
+            "client_id": self.client_id,
+            "name": self.name,
+            "due_day": self.due_day,
+            "amount": float(self.amount) if self.amount is not None else None,
+            "notes": self.notes or "",
+            "next_due": due.isoformat(),
+            "days_away": (due - today).days,
         }
 
 

@@ -77,6 +77,14 @@
     .row-del { border: none; background: none; color: #94A3B8; cursor: pointer; padding: 2px 6px; font-size: 14px; }
     .row-del:hover { color: #DC2626; background: none; }
 
+    .badge-soon { background: #FEF3C7; color: #92400E; }
+    .badge-upcoming { background: #D1FAE5; color: #065F46; }
+    .badge-today { background: #FEE2E2; color: #991B1B; }
+    .bill-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                padding: 11px 12px; background: #F8FAFC; border: 1px solid #E2E8F0;
+                border-radius: 8px; margin-bottom: 8px; }
+    .bill-name { font-size: 14px; font-weight: 600; }
+    .bill-due { font-size: 12px; color: #64748B; margin-top: 2px; }
     .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; font-size: 12px; color: #64748B; }
     .legend-item { display: flex; align-items: center; gap: 4px; }
     .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
@@ -174,6 +182,20 @@
       <div style="font-size:12px;color:#94A3B8;margin-top:8px;text-align:center;">
         Claude reads it, then you confirm before it saves.
       </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Bills due</div>
+      <div id="bills-list"></div>
+      <div class="row2" style="margin-top:10px;">
+        <div><label for="b-name">Bill</label><input id="b-name" type="text" placeholder="ComEd"></div>
+        <div class="row2">
+          <div><label for="b-day">Due day</label><input id="b-day" type="number" min="1" max="31" placeholder="15"></div>
+          <div><label for="b-amount">Amount</label><input id="b-amount" type="number" step="0.01" placeholder="optional"></div>
+        </div>
+      </div>
+      <div id="bill-error" class="msg msg-error hide" style="margin-top:10px;"></div>
+      <button style="width:100%;margin-top:10px;padding:10px;" onclick="addBill()">+ Add bill</button>
     </div>
 
     <div class="section">
@@ -279,15 +301,23 @@
       sel.appendChild(o);
     });
 
-    let last = null;
-    try { last = localStorage.getItem(CLIENT_KEY); } catch (e) {}
-    if (last && clients.some(c => String(c.id) === String(last))) sel.value = last;
+    // A /c/<slug> URL wins over the remembered job, so a link always opens
+    // the job it names.
+    const m = window.location.pathname.match(/^\/c\/([^/]+)$/);
+    const fromUrl = m && clients.find(c => c.slug === decodeURIComponent(m[1]));
+    if (fromUrl) {
+      sel.value = fromUrl.id;
+    } else {
+      let last = null;
+      try { last = localStorage.getItem(CLIENT_KEY); } catch (e) {}
+      if (last && clients.some(c => String(c.id) === String(last))) sel.value = last;
+    }
 
     const none = clients.length === 0;
     show('no-clients', none);
     show('dash', !none);
     $('del-client-btn').disabled = none;
-    if (!none) await loadReceipts();
+    if (!none) { syncUrl(); await loadReceipts(); }
   }
 
   function currentClientId() { return parseInt($('client').value, 10); }
@@ -295,7 +325,17 @@
 
   function clientChanged() {
     try { localStorage.setItem(CLIENT_KEY, $('client').value); } catch (e) {}
+    syncUrl();
     loadReceipts();
+  }
+
+  function syncUrl() {
+    const c = currentClient();
+    if (!c) return;
+    const path = '/c/' + c.slug;
+    if (window.location.pathname !== path) {
+      window.history.replaceState({}, '', path);
+    }
   }
 
   function openNewClient() {
@@ -362,6 +402,7 @@
     }
     // Render each piece separately: a chart library that failed to load must
     // not be able to take the receipts table down with it.
+    loadBills();
     try { renderMetrics(); } catch (e) { console.error(e); }
     try { renderChart(); } catch (e) { console.error(e); }
     try { renderTable(); } catch (e) { console.error(e); }
@@ -447,6 +488,68 @@
     if (!confirm(`Delete the ${r ? r.store : ''} receipt? This cannot be undone.`)) return;
     await api('/receipts/' + id, { method: 'DELETE' });
     await loadClients();
+  }
+
+  // --- bills ------------------------------------------------------------
+
+  async function loadBills() {
+    const id = currentClientId();
+    if (!id) return;
+    try {
+      const r = await api('/clients/' + id + '/bills');
+      renderBills(await r.json());
+    } catch (e) {
+      $('bills-list').innerHTML = '<div class="loading">Could not load bills.</div>';
+    }
+  }
+
+  function renderBills(bills) {
+    if (!bills.length) {
+      $('bills-list').innerHTML = '<div class="loading" style="padding:1rem;">No bills yet</div>';
+      return;
+    }
+    $('bills-list').innerHTML = bills.map(b => {
+      const d = b.days_away;
+      const cls = d === 0 ? 'badge-today' : (d <= 7 ? 'badge-soon' : 'badge-upcoming');
+      const when = d === 0 ? 'Due today' : (d === 1 ? 'Due tomorrow' : 'In ' + d + ' days');
+      const pretty = new Date(b.next_due + 'T00:00:00')
+        .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `<div class="bill-row">
+        <div>
+          <div class="bill-name">${esc(b.name)}${b.amount != null ? ' · ' + money(b.amount) : ''}</div>
+          <div class="bill-due">${pretty} · day ${b.due_day} each month</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge ${cls}">${when}</span>
+          <button class="row-del" title="Remove bill" onclick="deleteBill(${b.id})">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function addBill() {
+    const name = $('b-name').value.trim();
+    const day = parseInt($('b-day').value, 10);
+    const err = $('bill-error');
+    if (!name) { err.textContent = 'Bill name is required.'; show('bill-error', true); return; }
+    if (isNaN(day) || day < 1 || day > 31) { err.textContent = 'Due day must be 1-31.'; show('bill-error', true); return; }
+    show('bill-error', false);
+    const amount = parseFloat($('b-amount').value);
+    const r = await api('/clients/' + currentClientId() + '/bills', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, due_day: day, amount: isNaN(amount) ? null : amount })
+    });
+    const data = await r.json();
+    if (!r.ok) { err.textContent = data.error || 'Could not add bill.'; show('bill-error', true); return; }
+    $('b-name').value = ''; $('b-day').value = ''; $('b-amount').value = '';
+    loadBills();
+  }
+
+  async function deleteBill(id) {
+    if (!confirm('Remove this bill?')) return;
+    await api('/bills/' + id, { method: 'DELETE' });
+    loadBills();
   }
 
   function downloadExcel() {

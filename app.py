@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 
 import storage
 from claude_receipts import CATEGORIES, analyze_receipt
-from db import Client, Receipt, SessionLocal, init_db, unique_slug
+from db import Bill, Client, Receipt, SessionLocal, init_db, unique_slug
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -55,6 +55,12 @@ def index():
 @app.route("/add")
 def add_page():
     return send_from_directory(STATIC_DIR, "add.html")
+
+
+@app.route("/c/<slug>")
+def client_page(slug: str):
+    """Per-job dashboard URL. The page reads the slug out of the path."""
+    return send_from_directory(STATIC_DIR, "index.html")
 
 
 @app.route("/static/<path:filename>")
@@ -333,6 +339,65 @@ def delete_receipt(receipt_id: int):
         session.delete(receipt)
         session.commit()
         logger.info("Deleted receipt %s", receipt_id)
+        return jsonify({"success": True})
+
+
+# --- bills --------------------------------------------------------------
+
+@app.route("/clients/<int:client_id>/bills", methods=["GET"])
+def list_bills(client_id: int):
+    if (err := require_auth()):
+        return err
+    with SessionLocal() as session:
+        if session.get(Client, client_id) is None:
+            return jsonify({"error": "Client not found"}), 404
+        bills = session.scalars(
+            select(Bill).where(Bill.client_id == client_id)
+        ).all()
+        return jsonify(sorted((b.to_dict() for b in bills), key=lambda b: b["days_away"]))
+
+
+@app.route("/clients/<int:client_id>/bills", methods=["POST"])
+def create_bill(client_id: int):
+    if (err := require_auth()):
+        return err
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+    try:
+        due_day = int(data.get("due_day"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Due day must be a number"}), 400
+    if not 1 <= due_day <= 31:
+        return jsonify({"error": "Due day must be between 1 and 31"}), 400
+
+    amount = data.get("amount")
+    try:
+        amount = round(float(amount), 2) if amount not in (None, "") else None
+    except (TypeError, ValueError):
+        amount = None
+
+    with SessionLocal() as session:
+        if session.get(Client, client_id) is None:
+            return jsonify({"error": "Client not found"}), 404
+        bill = Bill(client_id=client_id, name=name, due_day=due_day, amount=amount,
+                    notes=(data.get("notes") or "").strip() or None)
+        session.add(bill)
+        session.commit()
+        return jsonify(bill.to_dict()), 201
+
+
+@app.route("/bills/<int:bill_id>", methods=["DELETE"])
+def delete_bill(bill_id: int):
+    if (err := require_auth()):
+        return err
+    with SessionLocal() as session:
+        bill = session.get(Bill, bill_id)
+        if bill is None:
+            return jsonify({"error": "Bill not found"}), 404
+        session.delete(bill)
+        session.commit()
         return jsonify({"success": True})
 
 
