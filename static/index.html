@@ -108,9 +108,6 @@
     .header-right select { padding:7px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;
                            font-family:inherit;outline:none;background:white;color:#0D1B2A;max-width:220px; }
     .header-right button:disabled { opacity:0.5;cursor:default; }
-    .hdr-link { font-size:13px;padding:8px 16px;border:1px solid #E2E8F0;border-radius:6px;
-                background:white;color:#0D1B2A;text-decoration:none;white-space:nowrap; }
-    .hdr-link:hover { background:#F1F5F9; }
     .job-admin { display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:1.5rem 0 0.5rem; }
     .job-admin button { font-size:12px;padding:6px 14px;color:#64748B; }
     .row-del { border:none;background:none;color:#94A3B8;cursor:pointer;padding:2px 6px;font-size:14px;font-family:inherit; }
@@ -141,7 +138,6 @@
       <div class="header-right">
         <select id="client" onchange="clientChanged()" class="hide"></select>
         <button onclick="loadReceipts()">Refresh</button>
-        <a href="/add" class="hdr-link">📷 Phone</a>
       </div>
     </div>
     <div class="last-updated" id="last-updated" style="margin:-0.75rem 0 1rem;">Loading...</div>
@@ -166,7 +162,7 @@
     </div>
 
     <div id="no-clients" class="error hide" style="margin-bottom:1rem;">
-      No jobs yet — click <strong>+ New Client</strong> to add your first one. That is the whole setup.
+      No projects yet — click <strong>+ New Project</strong> to add your first one. That is the whole setup.
     </div>
 
     <!-- Upload Receipt Modal -->
@@ -185,7 +181,7 @@
     <!-- New Client Modal -->
     <div class="modal-overlay" id="client-modal">
       <div class="modal">
-        <h2>New Client</h2>
+        <h2>New Project</h2>
         <div class="modal-field"><label>Name</label>
           <input id="c-name" type="text" placeholder="1041 Arbor Ln"></div>
         <div class="modal-field"><label>Address (optional)</label>
@@ -195,7 +191,7 @@
         <div id="client-status" class="modal-status"></div>
         <div class="modal-actions">
           <button class="modal-btn modal-btn-cancel" onclick="closeModal('client-modal')">Cancel</button>
-          <button class="modal-btn modal-btn-confirm" id="c-save" onclick="createClient()">Add Client</button>
+          <button class="modal-btn modal-btn-confirm" id="c-save" onclick="createClient()">Add Project</button>
         </div>
       </div>
     </div>
@@ -264,8 +260,8 @@
     </div><!-- end dash -->
 
     <div class="job-admin">
-      <button onclick="openNewClient()">+ New Client</button>
-      <button id="del-client-btn" onclick="deleteClient()">Delete Job</button>
+      <button onclick="openNewClient()">+ New Project</button>
+      <button id="del-client-btn" onclick="deleteClient()">Delete Project</button>
     </div>
 
   </div>
@@ -375,7 +371,7 @@
     show('no-clients', none);
     show('dash', !none);
     $('del-client-btn').disabled = none;
-    $('job-title').textContent = none ? 'No jobs yet' : (currentClient() || {}).name;
+    $('job-title').textContent = none ? 'No projects yet' : (currentClient() || {}).name;
     $('start-card').style.display = none ? 'none' : 'flex';
     if (none && timerHandle) { clearInterval(timerHandle); timerHandle = null; }
     if (!none) { syncUrl(); renderStartDate(); await loadReceipts(); }
@@ -434,7 +430,7 @@
       status.className = 'modal-status error';
       status.textContent = e.message;
     } finally {
-      btn.disabled = false; btn.textContent = 'Add Client';
+      btn.disabled = false; btn.textContent = 'Add Project';
     }
   }
 
