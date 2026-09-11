@@ -11,7 +11,7 @@ import logging
 import os
 from datetime import date, datetime
 
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, redirect, request, send_from_directory
 from flask_cors import CORS
 from sqlalchemy import func, select
 
@@ -108,7 +108,8 @@ def index():
 
 @app.route("/add")
 def add_page():
-    return send_from_directory(STATIC_DIR, "add.html")
+    """The phone page is gone; old home-screen shortcuts land on the dashboard."""
+    return redirect("/", code=302)
 
 
 @app.route("/c/<slug>")

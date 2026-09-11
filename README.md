@@ -6,33 +6,31 @@ it, it lands on the right job's dashboard with the photo attached.
 Adding a new job is a name and an address on a form. No API keys, no Google
 Sheet, no Dropbox, no Telegram bot, no new deployment.
 
-## The two pages
+## The pages
 
 | Page | What it's for |
 | --- | --- |
-| `/` | Dashboard: pick a job, see totals and the receipts table, upload from a computer, export to Excel |
-| `/add` | Phone page: pick a job, tap **Add receipt**, the camera opens |
+| `/` | Dashboard: pick a job, see totals and the receipts table, add a receipt, export to Excel |
 | `/c/<job-slug>` | The dashboard opened straight to one job, e.g. `/c/1041-arbor-ln` |
 
-Both pages ask for the password once and remember it on that device.
+The page asks for the password once and remembers it on that device.
 
 ### Put it on your phone
 
-Open `/add` in Safari → Share → **Add to Home Screen**. It gets its own icon
-and opens full screen like an app.
+Open the site in Safari → Share → **Add to Home Screen**. It gets its own icon,
+opens full screen like an app and goes straight to the dashboard. **Upload
+Receipt** there lets you take a photo or pick one from the library.
 
 ## Adding a job
 
-Dashboard → **+ New client** → name (and optionally address and notes) → Add.
-That is the whole setup. The job appears in the phone page's dropdown straight
-away.
+Dashboard → **+ New Project** → name (and optionally address and notes) → Add.
+That is the whole setup.
 
 ## Project tab
 
 Rename the project (the name at the top of the page), set the start date the
 counter at the top runs from, change the passcode, and pick light, dark or
-auto for the theme. The theme choice is per device and the phone page follows
-it.
+auto for the theme. The theme choice is per device.
 
 The passcode lives in the database once it has been changed here;
 `ADMIN_PASSWORD` is only the starting value. Changing it signs out every
@@ -69,12 +67,11 @@ fails, and it says so. You can still enter receipts by hand.
 ## How the pieces fit
 
 ```
-app.py               Flask: API + serves the two pages
+app.py               Flask: API + serves the dashboard
 db.py                Tables: clients, receipts, bills
 storage.py           Receipt photos on the volume
 claude_receipts.py   The prompt and the Claude call
 static/index.html    Dashboard
-static/add.html      Phone page
 static/manifest.json Home-screen app details
 ```
 
@@ -82,7 +79,7 @@ Tables are created on startup, so a fresh database needs no migration step.
 
 ## API
 
-Everything except `/`, `/add`, `/c/<slug>`, `/static/*` and `/health` needs the
+Everything except `/`, `/c/<slug>`, `/static/*` and `/health` needs the
 password, sent as an `X-Admin-Password` header. `/receipts/<id>/image` also
 accepts `?key=`, which is what lets the **View** link be a plain link.
 
