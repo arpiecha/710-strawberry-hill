@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GC Tracker</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GCTracker">
+  <meta name="theme-color" content="#0D1B2A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    input, select, textarea { font-size: 16px; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #F8FAFC; color: #1E293B; min-height: 100vh; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+
+    .header { display: flex; align-items: center; justify-content: space-between;
+              margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px; }
+    .header h1 { font-size: 22px; font-weight: 600; }
+    .header h1 span { color: #06B6D4; }
+    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .last-updated { font-size: 12px; color: #64748B; }
+
+    button { padding: 8px 16px; font-size: 13px; border: 1px solid #E2E8F0; border-radius: 6px;
+             background: white; color: #0D1B2A; cursor: pointer; font-family: inherit; }
+    button:hover { background: #F1F5F9; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .btn-dark { background: #0D1B2A; color: white; border-color: #0D1B2A; font-weight: 600; }
+    .btn-dark:hover { background: #132236; }
+    a.btn-link { display: inline-block; padding: 8px 16px; font-size: 13px; border: 1px solid #E2E8F0;
+                 border-radius: 6px; background: white; color: #0D1B2A; text-decoration: none; }
+    a.btn-link:hover { background: #F1F5F9; }
+
+    .jobbar { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .jobbar .field { flex: 1; min-width: 220px; }
+    label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+            text-transform: uppercase; color: #64748B; margin-bottom: 5px; }
+    select, input[type="text"], input[type="number"], input[type="date"], textarea {
+      width: 100%; padding: 9px 12px; font-size: 14px; border: 1px solid #E2E8F0;
+      border-radius: 8px; font-family: inherit; outline: none; background: white; color: #1E293B; }
+    select:focus, input:focus, textarea:focus { border-color: #0D1B2A; }
+    textarea { resize: vertical; min-height: 64px; }
+
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+               gap: 12px; margin-bottom: 1.5rem; }
+    .metric { background: white; border-radius: 8px; padding: 1rem; border: 1px solid #E2E8F0; }
+    .metric-label { font-size: 11px; color: #64748B; margin-bottom: 4px; font-weight: 500;
+                    letter-spacing: 0.05em; text-transform: uppercase; }
+    .metric-value { font-size: 22px; font-weight: 600; }
+    .metric-value.green { color: #059669; }
+    .metric-value.red { color: #DC2626; }
+
+    .section { background: white; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;
+               border: 1px solid #E2E8F0; }
+    .section-title { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+    th { text-align: left; padding: 6px 8px; color: #64748B; font-weight: 600; font-size: 11px;
+         letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid #E5E7EB; }
+    td { padding: 8px; border-bottom: 1px solid #F3F4F6; overflow: hidden;
+         text-overflow: ellipsis; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    .table-wrap { overflow-x: auto; }
+    .badge { font-size: 11px; padding: 2px 7px; border-radius: 20px; font-weight: 500; }
+    .badge-purchase { background: #D1FAE5; color: #065F46; }
+    .badge-return { background: #FEE2E2; color: #991B1B; }
+    .amount-pos { color: #059669; font-weight: 600; }
+    .amount-neg { color: #DC2626; font-weight: 600; }
+    a { color: #2563EB; }
+    .row-del { border: none; background: none; color: #94A3B8; cursor: pointer; padding: 2px 6px; font-size: 14px; }
+    .row-del:hover { color: #DC2626; background: none; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; font-size: 12px; color: #64748B; }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .loading { text-align: center; padding: 2rem; color: #94A3B8; font-size: 14px; }
+    .download-btn { width: 100%; margin-top: 1rem; padding: 10px; font-size: 14px; }
+
+    .msg { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 1rem; line-height: 1.5; }
+    .msg-error { background: #FEE2E2; color: #991B1B; }
+    .msg-warn { background: #FEF3C7; color: #92400E; }
+    .msg-ok { background: #D1FAE5; color: #065F46; }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+                     z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: white; border-radius: 10px; padding: 1.5rem; width: 100%;
+             max-width: 480px; max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
+    .modal-field { margin-bottom: 12px; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 1rem; }
+    .modal-btn { flex: 1; padding: 10px; font-size: 14px; border-radius: 8px; cursor: pointer;
+                 font-family: inherit; font-weight: 500; }
+    .modal-preview { width: 100%; max-height: 160px; object-fit: contain; border-radius: 8px;
+                     border: 1px solid #E2E8F0; margin-bottom: 1rem; background: #F8FAFC; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .spinner { width: 24px; height: 24px; border: 2px solid #E5E7EB; border-top-color: #0D1B2A;
+               border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hide { display: none !important; }
+
+    @media (max-width: 560px) {
+      .container { padding: 1.25rem 0.75rem 3rem; }
+      .col-items { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- password -->
+<div id="lock" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem;">
+  <div style="background:white;padding:2rem;border-radius:12px;border:1px solid #E2E8F0;text-align:center;width:300px;">
+    <div style="font-size:24px;margin-bottom:8px;">🏠</div>
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:4px;">GC Tracker</h2>
+    <p style="font-size:13px;color:#64748B;margin-bottom:1.25rem;">Enter password to continue</p>
+    <input id="pwd" type="password" placeholder="Password" autocomplete="current-password"
+           style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')unlock()">
+    <button class="btn-dark" style="width:100%;padding:9px;font-size:14px;" onclick="unlock()">Enter</button>
+    <p id="lock-error" class="msg msg-error hide" style="margin-top:10px;margin-bottom:0;"></p>
+  </div>
+</div>
+
+<div id="app" class="container hide">
+  <div class="header">
+    <h1>GC<span>Tracker</span></h1>
+    <div class="header-right">
+      <span class="last-updated" id="last-updated">Loading…</span>
+      <button onclick="loadReceipts()">Refresh</button>
+      <a class="btn-link" href="/add">📷 Phone upload</a>
+    </div>
+  </div>
+
+  <div class="jobbar">
+    <div class="field">
+      <label for="client">Job</label>
+      <select id="client" onchange="clientChanged()"></select>
+    </div>
+    <button onclick="openNewClient()">+ New client</button>
+    <button id="del-client-btn" onclick="deleteClient()">Delete job</button>
+  </div>
+
+  <div id="no-clients" class="msg msg-warn hide">
+    No jobs yet — add your first one with <strong>+ New client</strong>. That is the whole setup.
+  </div>
+
+  <div id="dash" class="hide">
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Total spent</div><div class="metric-value" id="m-total">--</div></div>
+      <div class="metric"><div class="metric-label">Purchases</div><div class="metric-value green" id="m-purchases">--</div></div>
+      <div class="metric"><div class="metric-label">Returns</div><div class="metric-value red" id="m-returns">--</div></div>
+      <div class="metric"><div class="metric-label">Receipts</div><div class="metric-value" id="m-count">--</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Spending by category</div>
+      <div class="legend" id="chart-legend"></div>
+      <div id="chart-unavailable" class="msg msg-warn hide">Chart could not load. The totals above and the table below are unaffected.</div>
+      <div style="height:240px;"><canvas id="catChart"></canvas></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Add a receipt</div>
+      <button class="btn-dark" style="width:100%;padding:13px;font-size:14px;" onclick="document.getElementById('deskphoto').click()">
+        Upload receipt photo
+      </button>
+      <input id="deskphoto" type="file" accept="image/*" class="hide" onchange="deskPhoto(this)">
+      <div style="font-size:12px;color:#94A3B8;margin-top:8px;text-align:center;">
+        Claude reads it, then you confirm before it saves.
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Receipts</div>
+      <div id="table-container"><div class="loading">Loading…</div></div>
+      <button class="download-btn" onclick="downloadExcel()">Download Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- new client -->
+<div class="modal-overlay" id="client-modal">
+  <div class="modal">
+    <h2>New client</h2>
+    <div class="modal-field"><label for="c-name">Name</label>
+      <input id="c-name" type="text" placeholder="1041 Arbor Ln"></div>
+    <div class="modal-field"><label for="c-address">Address (optional)</label>
+      <input id="c-address" type="text" placeholder="1041 Arbor Ln, Glenview IL"></div>
+    <div class="modal-field"><label for="c-notes">Notes (optional)</label>
+      <textarea id="c-notes"></textarea></div>
+    <div id="client-error" class="msg msg-error hide"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal('client-modal')">Cancel</button>
+      <button class="modal-btn btn-dark" id="c-save" onclick="createClient()">Add client</button>
+    </div>
+  </div>
+</div>
+
+<!-- receipt review -->
+<div class="modal-overlay" id="receipt-modal">
+  <div class="modal" id="receipt-modal-body"></div>
+</div>
+
+<script>
+  const API_BASE = '';
+  const PWD_KEY = 'gct_password';
+  const CLIENT_KEY = 'gct_last_client';
+
+  let password = '';
+  let clients = [];
+  let receipts = [];
+  let chart = null;
+  let deskImageB64 = null;
+  let deskImageUrl = null;
+
+  const $ = id => document.getElementById(id);
+  const show = (id, on) => $(id).classList.toggle('hide', !on);
+  const money = n => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const CAT_COLORS = {
+    'Materials': '#1D9E75',
+    'Labor': '#378ADD',
+    'Mortgage': '#7F77DD',
+    'MISC': '#888780'
+  };
+
+  function api(path, options = {}) {
+    const headers = Object.assign({}, options.headers || {}, { 'X-Admin-Password': password });
+    return fetch(API_BASE + path, Object.assign({}, options, { headers }));
+  }
+
+  // --- password ---------------------------------------------------------
+
+  async function unlock() {
+    const value = $('pwd').value;
+    if (!value) return;
+    try {
+      const r = await fetch(API_BASE + '/auth-check', { headers: { 'X-Admin-Password': value } });
+      if (!(await r.json()).ok) {
+        $('lock-error').textContent = 'Wrong password.';
+        show('lock-error', true);
+        $('pwd').value = '';
+        return;
+      }
+      password = value;
+      try { localStorage.setItem(PWD_KEY, value); } catch (e) {}
+      start();
+    } catch (e) {
+      $('lock-error').textContent = 'Cannot reach the server.';
+      show('lock-error', true);
+    }
+  }
+
+  async function start() {
+    $('lock').style.display = 'none';
+    show('app', true);
+    await loadClients();
+  }
+
+  // --- clients ----------------------------------------------------------
+
+  async function loadClients() {
+    const r = await api('/clients');
+    clients = await r.json();
+    const sel = $('client');
+    sel.innerHTML = '';
+    clients.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.name + (c.receipt_count ? ` (${c.receipt_count})` : '');
+      sel.appendChild(o);
+    });
+
+    let last = null;
+    try { last = localStorage.getItem(CLIENT_KEY); } catch (e) {}
+    if (last && clients.some(c => String(c.id) === String(last))) sel.value = last;
+
+    const none = clients.length === 0;
+    show('no-clients', none);
+    show('dash', !none);
+    $('del-client-btn').disabled = none;
+    if (!none) await loadReceipts();
+  }
+
+  function currentClientId() { return parseInt($('client').value, 10); }
+  function currentClient() { return clients.find(c => c.id === currentClientId()); }
+
+  function clientChanged() {
+    try { localStorage.setItem(CLIENT_KEY, $('client').value); } catch (e) {}
+    loadReceipts();
+  }
+
+  function openNewClient() {
+    $('c-name').value = ''; $('c-address').value = ''; $('c-notes').value = '';
+    show('client-error', false);
+    $('client-modal').classList.add('active');
+    $('c-name').focus();
+  }
+
+  function closeModal(id) { $(id).classList.remove('active'); }
+
+  async function createClient() {
+    const name = $('c-name').value.trim();
+    if (!name) {
+      $('client-error').textContent = 'Name is required.';
+      show('client-error', true);
+      return;
+    }
+    const btn = $('c-save');
+    btn.disabled = true; btn.textContent = 'Adding…';
+    try {
+      const r = await api('/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, address: $('c-address').value.trim(), notes: $('c-notes').value.trim() })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Could not add client');
+      closeModal('client-modal');
+      try { localStorage.setItem(CLIENT_KEY, data.id); } catch (e) {}
+      await loadClients();
+      $('client').value = data.id;
+      await loadReceipts();
+    } catch (e) {
+      $('client-error').textContent = e.message;
+      show('client-error', true);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Add client';
+    }
+  }
+
+  async function deleteClient() {
+    const c = currentClient();
+    if (!c) return;
+    if (!confirm(`Delete "${c.name}" and all ${c.receipt_count || 0} of its receipts? This cannot be undone.`)) return;
+    await api('/clients/' + c.id, { method: 'DELETE' });
+    try { localStorage.removeItem(CLIENT_KEY); } catch (e) {}
+    await loadClients();
+  }
+
+  // --- receipts ---------------------------------------------------------
+
+  async function loadReceipts() {
+    const id = currentClientId();
+    if (!id) return;
+    $('last-updated').textContent = 'Refreshing…';
+    try {
+      const r = await api('/clients/' + id + '/receipts');
+      receipts = await r.json();
+    } catch (e) {
+      $('last-updated').textContent = 'Could not load';
+      $('table-container').innerHTML = '<div class="loading">Could not load receipts.</div>';
+      return;
+    }
+    // Render each piece separately: a chart library that failed to load must
+    // not be able to take the receipts table down with it.
+    try { renderMetrics(); } catch (e) { console.error(e); }
+    try { renderChart(); } catch (e) { console.error(e); }
+    try { renderTable(); } catch (e) { console.error(e); }
+    $('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  }
+
+  function renderMetrics() {
+    let purchases = 0, returns = 0;
+    receipts.forEach(r => { if (r.amount < 0) returns += Math.abs(r.amount); else purchases += r.amount; });
+    $('m-total').textContent = money(purchases - returns);
+    $('m-purchases').textContent = money(purchases);
+    $('m-returns').textContent = money(returns);
+    $('m-count').textContent = receipts.length;
+  }
+
+  function renderChart() {
+    const cats = {};
+    receipts.filter(r => r.type === 'purchase').forEach(r => {
+      cats[r.category] = (cats[r.category] || 0) + Math.abs(r.amount);
+    });
+    const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+    const labels = sorted.map(([k]) => k);
+    const values = sorted.map(([, v]) => parseFloat(v.toFixed(2)));
+    const colors = labels.map(l => CAT_COLORS[l] || '#888780');
+
+    $('chart-legend').innerHTML = labels.map((l, i) =>
+      `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${esc(l)} ${money(values[i])}</span>`
+    ).join('');
+
+    if (typeof Chart === 'undefined') {
+      $('chart-unavailable').classList.remove('hide');
+      return;
+    }
+    $('chart-unavailable').classList.add('hide');
+    if (chart) chart.destroy();
+    chart = new Chart($('catChart').getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0, borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' $' + ctx.parsed.y.toFixed(2) } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 12 } } },
+          y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748B', font: { size: 12 }, callback: v => '$' + v } }
+        }
+      }
+    });
+  }
+
+  function renderTable() {
+    if (receipts.length === 0) {
+      $('table-container').innerHTML = '<div class="loading">No receipts yet</div>';
+      return;
+    }
+    const rows = receipts.map(r => {
+      const isReturn = r.amount < 0;
+      const view = r.has_image
+        ? `<a href="${API_BASE}/receipts/${r.id}/image?key=${encodeURIComponent(password)}" target="_blank" rel="noopener">view</a>`
+        : '<span style="color:#CBD5E1">—</span>';
+      return `<tr>
+        <td style="width:92px">${esc(r.date)}</td>
+        <td style="width:150px" title="${esc(r.store)}">${esc(r.store)}</td>
+        <td style="width:110px">${esc(r.category)}</td>
+        <td style="width:86px"><span class="badge ${isReturn ? 'badge-return' : 'badge-purchase'}">${esc(r.type)}</span></td>
+        <td style="width:92px" class="${isReturn ? 'amount-neg' : 'amount-pos'}">${isReturn ? '-' : '+'}${money(r.amount)}</td>
+        <td class="col-items" title="${esc(r.items)}">${esc(r.items)}</td>
+        <td style="width:56px">${view}</td>
+        <td style="width:44px"><button class="row-del" title="Delete receipt" onclick="deleteReceipt(${r.id})">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    $('table-container').innerHTML = `<div class="table-wrap"><table>
+      <thead><tr>
+        <th style="width:92px">Date</th><th style="width:150px">Store</th>
+        <th style="width:110px">Category</th><th style="width:86px">Type</th>
+        <th style="width:92px">Amount</th><th class="col-items">Items</th>
+        <th style="width:56px">Photo</th><th style="width:44px"></th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  async function deleteReceipt(id) {
+    const r = receipts.find(x => x.id === id);
+    if (!confirm(`Delete the ${r ? r.store : ''} receipt? This cannot be undone.`)) return;
+    await api('/receipts/' + id, { method: 'DELETE' });
+    await loadClients();
+  }
+
+  function downloadExcel() {
+    if (typeof XLSX === 'undefined') {
+      alert('The spreadsheet library could not load. Check your connection and refresh.');
+      return;
+    }
+    const client = currentClient();
+    const ws_data = [['Date', 'Store', 'Category', 'Type', 'Amount ($)', 'Items', 'Notes']];
+    receipts.forEach(r => ws_data.push([r.date, r.store, r.category, r.type, r.amount, r.items, r.notes]));
+    const cats = {};
+    receipts.filter(r => r.type === 'purchase').forEach(r => {
+      cats[r.category] = (cats[r.category] || 0) + Math.abs(r.amount);
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), 'Receipts');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Category', 'Total'], ...Object.entries(cats)]), 'By Category');
+    XLSX.writeFile(wb, (client ? client.slug : 'receipts') + '-receipts.xlsx');
+  }
+
+  // --- upload from desktop ----------------------------------------------
+
+  function downscale(file, maxDim = 1600, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read the photo'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Could not open the photo'));
+        img.onload = () => {
+          let { width, height } = img;
+          const scale = Math.min(1, maxDim / Math.max(width, height));
+          width = Math.round(width * scale); height = Math.round(height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const [head, body] = dataUrl.split(',');
+    const bytes = atob(body);
+    const buf = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+    return new Blob([buf], { type: head.match(/:(.*?);/)[1] });
+  }
+
+  async function deskPhoto(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+
+    $('receipt-modal').classList.add('active');
+    $('receipt-modal-body').innerHTML =
+      '<div style="text-align:center;padding:2rem;color:#64748B;"><div class="spinner"></div>Reading receipt…</div>';
+
+    try {
+      const dataUrl = await downscale(file);
+      deskImageUrl = dataUrl;
+      deskImageB64 = dataUrl.split(',')[1];
+      const form = new FormData();
+      form.append('photo', dataUrlToBlob(dataUrl), 'receipt.jpg');
+      const r = await api('/analyze', { method: 'POST', body: form });
+      const data = await r.json();
+      receiptForm(data.success ? (data.receipt || {}) : {},
+                  data.success ? '' : (data.error || 'Could not read it — fill it in below.'));
+    } catch (e) {
+      receiptForm({}, e.message || 'Could not read it — fill it in below.');
+    }
+  }
+
+  function receiptForm(r, warning) {
+    const today = new Date().toISOString().slice(0, 10);
+    const items = Array.isArray(r.items) ? r.items.join(', ') : (r.items || '');
+    const cat = ['Materials', 'Labor', 'Mortgage', 'MISC'].includes(r.category) ? r.category : 'MISC';
+    $('receipt-modal-body').innerHTML = `
+      <h2>Check and save</h2>
+      ${deskImageUrl ? `<img class="modal-preview" src="${deskImageUrl}" alt="Receipt">` : ''}
+      <div id="r-msg" class="msg msg-warn ${warning ? '' : 'hide'}">${esc(warning)}</div>
+      <div class="modal-field"><label>Store</label><input id="r-store" type="text" value="${esc(r.store || '')}"></div>
+      <div class="row2">
+        <div class="modal-field"><label>Amount</label>
+          <input id="r-amount" type="number" step="0.01" value="${r.total != null ? r.total : ''}"></div>
+        <div class="modal-field"><label>Date</label>
+          <input id="r-date" type="date" value="${esc(r.date || today)}"></div>
+      </div>
+      <div class="row2">
+        <div class="modal-field"><label>Category</label><select id="r-category">
+          ${['Materials', 'Labor', 'Mortgage', 'MISC'].map(c =>
+            `<option${c === cat ? ' selected' : ''}>${c}</option>`).join('')}
+        </select></div>
+        <div class="modal-field"><label>Type</label><select id="r-type">
+          <option value="purchase"${r.type !== 'return' ? ' selected' : ''}>Purchase</option>
+          <option value="return"${r.type === 'return' ? ' selected' : ''}>Return</option>
+        </select></div>
+      </div>
+      <div class="modal-field"><label>Items</label><input id="r-items" type="text" value="${esc(items)}"></div>
+      <div class="modal-field"><label>Notes</label><textarea id="r-notes">${esc(r.notes || '')}</textarea></div>
+      <div class="modal-actions">
+        <button class="modal-btn" onclick="closeModal('receipt-modal')">Cancel</button>
+        <button class="modal-btn btn-dark" id="r-save" onclick="saveReceipt(false)">Save receipt</button>
+      </div>`;
+  }
+
+  async function saveReceipt(force) {
+    const btn = $('r-save');
+    const amount = parseFloat($('r-amount').value);
+    const store = $('r-store').value.trim();
+    const msg = $('r-msg');
+    const fail = text => {
+      msg.textContent = text; msg.className = 'msg msg-error';
+      btn.disabled = false; btn.textContent = 'Save receipt';
+    };
+    if (!store) return fail('Store is required.');
+    if (isNaN(amount)) return fail('Amount is required.');
+
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const r = await api('/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: currentClientId(),
+          date: $('r-date').value || new Date().toISOString().slice(0, 10),
+          store, category: $('r-category').value, type: $('r-type').value, amount,
+          items: $('r-items').value.trim(), notes: $('r-notes').value.trim(),
+          image_base64: deskImageB64, source: 'dashboard', force: !!force
+        })
+      });
+      const data = await r.json();
+
+      if (data.duplicate) {
+        msg.className = 'msg msg-warn';
+        msg.textContent = data.error + ' ';
+        const again = document.createElement('button');
+        again.textContent = 'Save anyway';
+        again.className = 'btn-dark';
+        again.style.marginTop = '8px';
+        again.onclick = () => saveReceipt(true);
+        msg.appendChild(again);
+        msg.classList.remove('hide');
+        btn.disabled = false; btn.textContent = 'Save receipt';
+        return;
+      }
+      if (!data.success) return fail(data.error || 'Could not save.');
+
+      closeModal('receipt-modal');
+      deskImageB64 = null; deskImageUrl = null;
+      await loadClients();
+    } catch (e) {
+      fail('Cannot reach the server.');
+    }
+  }
+
+  // --- boot -------------------------------------------------------------
+
+  (async function boot() {
+    let saved = null;
+    try { saved = localStorage.getItem(PWD_KEY); } catch (e) {}
+    if (saved) {
+      try {
+        const r = await fetch(API_BASE + '/auth-check', { headers: { 'X-Admin-Password': saved } });
+        if ((await r.json()).ok) { password = saved; await start(); return; }
+      } catch (e) {}
+    }
+    $('lock').style.display = 'flex';
+  })();
+</script>
+</body>
+</html>
