@@ -89,6 +89,14 @@
     .manual-entry-btn:hover { background: var(--hover); }
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.active { display: flex; }
+    /* Receipt photo viewer: the photo fills the modal, capped so the actions
+       stay on screen on a phone. */
+    .photo-modal { display: flex; flex-direction: column; gap: 10px; }
+    .photo-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .photo-modal-head h2 { margin-bottom: 0; }
+    .photo-close { padding: 4px 9px; font-size: 15px; line-height: 1; color: var(--muted); }
+    #photo-img { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 8px;
+                 border: 1px solid var(--border); background: var(--hover); }
     .modal { background: var(--surface); border-radius: 10px; max-width: calc(100vw - 2rem); overflow-x: hidden; padding: 1.5rem; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
     .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
     .modal-field { margin-bottom: 12px; }
@@ -129,8 +137,10 @@
     .badge-soon { background: #FEF3C7; color: #92400E; }
     .badge-upcoming { background: #D1FAE5; color: #065F46; }
     .badge-today { background: #FEE2E2; color: #991B1B; }
+    /* On a phone there isn't room for every column. The item list is the one
+       worth dropping; the photo link has to stay reachable. */
     @media (max-width: 500px) {
-      .col-photo { display: none; }
+      .col-items { display: none; }
     }
     /* --- additions for multiple jobs --- */
     /* The wordmark from mygctracker.com: Space Grotesk bold with GC in cyan. */
@@ -236,6 +246,21 @@
         <div class="modal-actions">
           <button class="modal-btn modal-btn-cancel" onclick="closeModal('client-modal')">Cancel</button>
           <button class="modal-btn modal-btn-confirm" id="c-save" onclick="createClient()">Add Project</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Receipt photo viewer -->
+    <div class="modal-overlay" id="photo-modal" onclick="if(event.target===this)closeModal('photo-modal')">
+      <div class="modal photo-modal">
+        <div class="photo-modal-head">
+          <h2 id="photo-title">Receipt</h2>
+          <button class="photo-close" onclick="closeModal('photo-modal')" aria-label="Close">✕</button>
+        </div>
+        <img id="photo-img" alt="Receipt photo">
+        <div class="modal-actions">
+          <a id="photo-open" href="#" target="_blank" rel="noopener" class="modal-btn modal-btn-cancel" style="text-decoration:none;text-align:center;line-height:1.6;">Open full size</a>
+          <button class="modal-btn modal-btn-confirm" onclick="closeModal('photo-modal')">Close</button>
         </div>
       </div>
     </div>
@@ -487,7 +512,27 @@
     $('c-name').focus();
   }
 
-  function closeModal(id) { $(id).classList.remove('active'); }
+  function closeModal(id) {
+    $(id).classList.remove('active');
+    if (id === 'photo-modal') $('photo-img').removeAttribute('src');   // don't flash the old photo
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('photo-modal').classList.contains('active')) closeModal('photo-modal');
+  });
+
+  function photoUrl(id) {
+    return API_BASE + '/receipts/' + id + '/image?key=' + encodeURIComponent(password);
+  }
+
+  function openPhoto(id) {
+    const r = allReceipts.find(x => x.id === id);
+    const url = photoUrl(id);
+    $('photo-title').textContent = r ? r.store + ' — ' + r.date : 'Receipt';
+    $('photo-img').src = url;
+    $('photo-open').href = url;
+    $('photo-modal').classList.add('active');
+  }
 
   async function createClient() {
     const name = $('c-name').value.trim();
@@ -676,7 +721,7 @@
     const rows = allReceipts.map(r => {
       const isReturn = r.amount < 0;
       const photoLink = r.has_image
-        ? '<a href="' + API_BASE + '/receipts/' + r.id + '/image?key=' + encodeURIComponent(password) + '" target="_blank" rel="noopener">view</a>'
+        ? '<a href="#" onclick="openPhoto(' + r.id + ');return false;">view</a>'
         : '';
       return '<tr>' +
         '<td style="width:90px">' + esc(r.date) + '</td>' +
@@ -684,7 +729,7 @@
         '<td style="width:100px">' + esc(r.category) + '</td>' +
         '<td style="width:70px"><span class="badge ' + (isReturn ? 'badge-return' : 'badge-purchase') + '">' + esc(r.type) + '</span></td>' +
         '<td style="width:75px" class="' + (isReturn ? 'amount-neg' : 'amount-pos') + '">' + (isReturn ? '-' : '+') + money(r.amount) + '</td>' +
-        '<td style="width:180px;color:var(--muted);font-size:12px;">' + esc(r.items) + '</td>' +
+        '<td class="col-items" style="width:180px;color:var(--muted);font-size:12px;">' + esc(r.items) + '</td>' +
         '<td class="col-photo" style="width:50px">' + photoLink + '</td>' +
         '<td style="width:40px"><button class="row-del" title="Delete receipt" onclick="deleteReceipt(' + r.id + ')">✕</button></td>' +
         '</tr>';
@@ -693,7 +738,7 @@
     $('table-container').innerHTML = '<div class="table-wrap"><table><thead><tr>' +
       '<th style="width:90px">Date</th><th style="width:130px">Store</th>' +
       '<th style="width:100px">Category</th><th style="width:70px">Type</th>' +
-      '<th style="width:75px">Amount</th><th style="width:180px">Items</th>' +
+      '<th style="width:75px">Amount</th><th class="col-items" style="width:180px">Items</th>' +
       '<th class="col-photo" style="width:50px">Photo</th><th style="width:40px"></th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
