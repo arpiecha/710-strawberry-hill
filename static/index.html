@@ -136,18 +136,23 @@
     /* --- additions for multiple jobs --- */
     .brand { font-family:'Inter',sans-serif;font-weight:700;font-size:15px;color:var(--accent);letter-spacing:-0.2px; }
     .brand span { color:#06B6D4; }
-    .header { align-items:flex-start; }
-    .header-left { display:flex;align-items:center;gap:10px;flex-wrap:wrap;order:1; }
-    .header-left select { padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;
-                          font-family:inherit;outline:none;background:var(--surface);color:var(--accent);max-width:220px; }
-    .header-left button:disabled { opacity:0.5;cursor:default; }
-    .brand-block { display:flex;flex-direction:column;align-items:flex-end;gap:6px;order:2;text-align:right;min-width:0; }
-    .brand-block h1 { font-size:22px;font-weight:600;line-height:1.2; }
-    .logo-mark { width:56px;height:56px;border-radius:12px;flex-shrink:0; }
+    /* Name on the left with the timestamp beneath it, logo centred, Refresh on
+       the right sitting on the same line as the name. */
+    .header { display:grid;grid-template-columns:1fr auto 1fr;align-items:start;
+              column-gap:12px;margin-bottom:1.5rem; }
+    .head-name { display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0; }
+    .head-name h1 { font-size:22px;font-weight:600;line-height:1.25; }
+    .head-name select { margin-top:4px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;
+                        font-size:13px;font-family:inherit;outline:none;background:var(--surface);
+                        color:var(--text);max-width:220px; }
+    .head-actions { display:flex;justify-content:flex-end;align-items:flex-start;gap:8px; }
+    .head-actions button:disabled { opacity:0.5;cursor:default; }
+    .logo-mark { width:56px;height:56px;border-radius:12px;flex-shrink:0;justify-self:center; }
     @media (max-width:560px) {
-      .header { flex-direction:column-reverse;align-items:stretch;gap:12px; }
-      .brand-block { align-items:center;text-align:center; }
-      .header-left { justify-content:center; }
+      .header { column-gap:8px; }
+      .head-name h1 { font-size:18px; }
+      .logo-mark { width:44px;height:44px;border-radius:10px; }
+      .head-actions button { padding:7px 12px; }
     }
     .job-admin { display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:1.5rem 0 0.5rem; }
     .job-admin button { font-size:12px;padding:6px 14px;color:var(--muted); }
@@ -164,7 +169,7 @@
 <body>
   <div id="lock-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
     <div style="background:var(--surface);padding:2rem;border-radius:12px;border:1px solid var(--border);text-align:center;width:280px;">
-      <img src="/static/icon.png" alt="" style="width:56px;height:56px;border-radius:12px;margin-bottom:10px;">
+      <img src="/static/logo.png" alt="" style="width:64px;height:64px;border-radius:14px;margin-bottom:10px;">
       <h2 style="font-size:16px;font-weight:600;margin-bottom:4px;">GC Tracker</h2>
       <p style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;">Enter password to continue</p>
       <input id="pwd-input" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;font-family:inherit;outline:none;" onkeydown="if(event.key==='Enter')checkPwd()">
@@ -176,14 +181,14 @@
   <div id="main-content" style="display:none;">
   <div class="container">
     <div class="header">
-      <div class="header-left">
-        <select id="client" onchange="clientChanged()" class="hide"></select>
-        <button onclick="loadReceipts()">Refresh</button>
-        <span class="last-updated" id="last-updated">Loading...</span>
-      </div>
-      <div class="brand-block">
-        <img src="/static/icon.png" alt="GC Tracker" class="logo-mark">
+      <div class="head-name">
         <h1 id="job-title">--</h1>
+        <span class="last-updated" id="last-updated">Loading...</span>
+        <select id="client" onchange="clientChanged()" class="hide"></select>
+      </div>
+      <img src="/static/logo.png" alt="GC Tracker" class="logo-mark">
+      <div class="head-actions">
+        <button onclick="loadReceipts()">Refresh</button>
       </div>
     </div>
 
