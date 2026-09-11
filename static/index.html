@@ -172,6 +172,16 @@
     .theme-btn { padding:12px 8px;font-size:13px;border:1px solid var(--border);border-radius:8px;
                  background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit; }
     .theme-btn.active { background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600; }
+    /* Deleting a project takes its receipts and photos with it, so it sits on
+       its own at the bottom behind the passcode. */
+    .danger-zone { border-color:#FCA5A5; }
+    .danger-zone .section-title { color:#DC2626; }
+    .danger-btn { width:100%;padding:14px;font-size:15px;font-weight:600;background:#DC2626;
+                  color:#FFFFFF;border:none;border-radius:8px;cursor:pointer;font-family:inherit; }
+    .danger-btn:hover { background:#B91C1C; }
+    .danger-btn:disabled { opacity:0.6;cursor:default; }
+    [data-theme="dark"] .danger-zone { border-color:#7F1D1D; }
+    [data-theme="dark"] .danger-zone .section-title { color:#F87171; }
     .row-del { border:none;background:none;color:#94A3B8;cursor:pointer;padding:2px 6px;font-size:14px;font-family:inherit; }
     .row-del:hover { color:#DC2626; }
     .table-wrap { overflow-x:auto; }
@@ -363,12 +373,22 @@
           <button class="theme-btn" id="theme-auto" onclick="setTheme('auto')">🖥️ Auto</button>
         </div>
       </div>
+
+      <div class="section danger-zone">
+        <div class="section-title">Delete Project</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
+          Deletes <strong id="s-del-name">this project</strong> and <strong id="s-del-count">its receipts</strong>, bills and
+          receipt photos. This cannot be undone. Enter your passcode to confirm.
+        </div>
+        <input type="password" id="s-del-pass" placeholder="Passcode" autocomplete="off" style="width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;outline:none;background:var(--surface);color:var(--text);margin-bottom:8px;">
+        <button class="danger-btn" id="del-client-btn" onclick="deleteClient()">Delete This Project</button>
+        <div id="s-del-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;margin-top:8px;"></div>
+      </div>
     </div>
     </div><!-- end dash -->
 
     <div class="job-admin">
       <button onclick="openNewClient()">+ New Project</button>
-      <button id="del-client-btn" onclick="deleteClient()">Delete Project</button>
     </div>
 
   </div>
@@ -564,11 +584,24 @@
   async function deleteClient() {
     const c = currentClient();
     if (!c) return;
+    const typed = $('s-del-pass').value;
+    if (!typed) return setStatus('s-del-status', 'Enter your passcode to delete this project', false);
+
+    // Check the passcode against the server, not the copy in this browser.
+    const check = await fetch(API_BASE + '/auth-check', { headers: { 'X-Admin-Password': typed } });
+    if (!(await check.json()).ok) return setStatus('s-del-status', 'Wrong passcode', false);
+
     if (!confirm('Delete "' + c.name + '" and all ' + (c.receipt_count || 0) + ' of its receipts? This cannot be undone.')) return;
-    await api('/clients/' + c.id, { method: 'DELETE' });
+    const btn = $('del-client-btn');
+    btn.disabled = true;
+    const r = await api('/clients/' + c.id, { method: 'DELETE' });
+    btn.disabled = false;
+    if (!r.ok) return setStatus('s-del-status', 'Could not delete the project', false);
+    $('s-del-pass').value = '';
     try { localStorage.removeItem(CLIENT_KEY); } catch (e) {}
     window.history.replaceState({}, '', '/');
     await loadClients();
+    switchTab('overview');
   }
 
   // --- project start date -----------------------------------------------
@@ -918,8 +951,13 @@
     $('s-name-status').style.display = 'none';
     $('s-date-status').style.display = 'none';
     $('s-pass-status').style.display = 'none';
+    $('s-del-status').style.display = 'none';
     $('start-date-input').value = c ? (c.start_date || '') : '';
     $('s-current').value = ''; $('s-new').value = ''; $('s-confirm').value = '';
+    $('s-del-pass').value = '';
+    $('s-del-name').textContent = c ? c.name : 'this project';
+    const n = c ? (c.receipt_count || 0) : 0;
+    $('s-del-count').textContent = n === 1 ? 'its 1 receipt' : 'all ' + n + ' of its receipts';
     markTheme();
   }
 
