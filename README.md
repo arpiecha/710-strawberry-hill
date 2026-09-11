@@ -1,6 +1,6 @@
-# GC Tracker
+# GC Tracker Template (`gc-tracker-template`)
 
-One receipt tracker for every job. Snap a receipt on your phone, Claude reads
+One receipt tracker for every job. This is the template repo the live tracker is deployed from. Snap a receipt on your phone, Claude reads
 it, it lands on the right job's dashboard with the photo attached.
 
 Adding a new job is a name and an address on a form. No API keys, no Google

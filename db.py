@@ -5,6 +5,7 @@ client is a row rather than a new deployment.
 """
 
 import calendar
+import logging
 import os
 import re
 from datetime import date, datetime
@@ -45,6 +46,7 @@ class Client(Base):
     slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     address: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
+    start_date: Mapped[date | None] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -63,6 +65,7 @@ class Client(Base):
             "slug": self.slug,
             "address": self.address,
             "notes": self.notes,
+            "start_date": self.start_date.isoformat() if self.start_date else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
         if receipt_count is not None:
@@ -158,6 +161,29 @@ class Bill(Base):
 
 def init_db() -> None:
     Base.metadata.create_all(engine)
+    _add_missing_columns()
+
+
+def _add_missing_columns() -> None:
+    """Add columns introduced after a table was first created.
+
+    create_all() only creates missing tables, never missing columns, so a
+    database that predates a new column would keep failing on every query
+    that touches it.
+    """
+    from sqlalchemy import inspect, text
+
+    wanted = {"clients": {"start_date": "DATE"}}
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table, columns in wanted.items():
+            if table not in inspector.get_table_names():
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for name, ddl in columns.items():
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+                    logging.getLogger(__name__).info("Added column %s.%s", table, name)
 
 
 def slugify(name: str) -> str:

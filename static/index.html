@@ -103,16 +103,14 @@
     /* --- additions for multiple jobs --- */
     .brand { font-family:'Inter',sans-serif;font-weight:700;font-size:15px;color:#0D1B2A;letter-spacing:-0.2px; }
     .brand span { color:#06B6D4; }
-    .jobcard { background:white;border-radius:10px;padding:1rem;border:1px solid #E2E8F0;margin-bottom:1rem;
-               display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
-    .jobcard .left { display:flex;align-items:center;gap:12px;flex:1;min-width:240px; }
-    .jobcard select { flex:1;min-width:160px;padding:8px 12px;border:1px solid #E2E8F0;border-radius:6px;
-                      font-size:14px;font-family:inherit;outline:none;background:white;color:#0D1B2A; }
-    .jobcard .actions { display:flex;gap:8px;flex-wrap:wrap; }
-    .jobcard button { font-size:12px;padding:6px 12px;border:1px solid #E2E8F0;border-radius:6px;background:white;
-                      color:#0D1B2A;cursor:pointer;font-weight:500;white-space:nowrap;font-family:inherit; }
-    .jobcard button:hover { background:#F1F5F9; }
-    .jobcard button:disabled { opacity:0.5;cursor:default; }
+    .title-left { display:flex;align-items:center;gap:10px;min-width:0; }
+    .logo-mark { width:34px;height:34px;border-radius:8px;flex-shrink:0; }
+    .header-right select { padding:7px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;
+                           font-family:inherit;outline:none;background:white;color:#0D1B2A;max-width:220px; }
+    .header-right button:disabled { opacity:0.5;cursor:default; }
+    .hdr-link { font-size:13px;padding:8px 16px;border:1px solid #E2E8F0;border-radius:6px;
+                background:white;color:#0D1B2A;text-decoration:none;white-space:nowrap; }
+    .hdr-link:hover { background:#F1F5F9; }
     .row-del { border:none;background:none;color:#94A3B8;cursor:pointer;padding:2px 6px;font-size:14px;font-family:inherit; }
     .row-del:hover { color:#DC2626; }
     .table-wrap { overflow-x:auto; }
@@ -134,22 +132,36 @@
   <div id="main-content" style="display:none;">
   <div class="container">
     <div class="header">
-      <h1 id="job-title">--</h1>
+      <div class="title-left">
+        <img src="/static/icon.png" alt="GC Tracker" class="logo-mark">
+        <h1 id="job-title">--</h1>
+      </div>
       <div class="header-right">
-        <span class="last-updated" id="last-updated">Loading...</span>
-        <button onclick="loadReceipts()">Refresh</button>
-        <a href="/add" style="font-size:13px;padding:8px 16px;border:1px solid #E2E8F0;border-radius:6px;background:white;color:#0D1B2A;text-decoration:none;">📷 Phone</a>
-      </div>
-    </div>
-
-    <div class="jobcard">
-      <div class="left">
-        <img src="/static/icon.png" alt="" style="width:34px;height:34px;border-radius:8px;">
         <select id="client" onchange="clientChanged()"></select>
-      </div>
-      <div class="actions">
         <button onclick="openNewClient()">+ New Client</button>
         <button id="del-client-btn" onclick="deleteClient()">Delete Job</button>
+        <button onclick="loadReceipts()">Refresh</button>
+        <a href="/add" class="hdr-link">📷 Phone</a>
+      </div>
+    </div>
+    <div class="last-updated" id="last-updated" style="margin:-0.75rem 0 1rem;">Loading...</div>
+
+    <div id="start-card" style="background:white;border-radius:10px;padding:1rem;border:1px solid #E2E8F0;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">🏗️</div>
+        <div>
+          <div style="font-size:12px;color:#64748B;" id="start-date-label">No start date set</div>
+          <div id="project-timer" style="font-size:18px;font-weight:600;color:#0D1B2A;">--</div>
+        </div>
+      </div>
+      <button onclick="showDatePicker()" style="font-size:12px;padding:6px 12px;border:1px solid #E2E8F0;border-radius:6px;background:white;color:#0D1B2A;cursor:pointer;font-weight:500;white-space:nowrap;">📅 Set Start Date</button>
+    </div>
+    <div id="date-picker-wrap" style="display:none;background:white;border-radius:10px;padding:1rem;border:1px solid #E2E8F0;margin-bottom:1rem;">
+      <div style="font-size:13px;font-weight:500;color:#0D1B2A;margin-bottom:8px;">Set Project Start Date</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="date" id="start-date-input" style="flex:1;padding:8px 12px;border:1px solid #E2E8F0;border-radius:6px;font-size:14px;font-family:inherit;outline:none;">
+        <button onclick="saveStartDate()" style="padding:8px 16px;background:#0D1B2A;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>
+        <button onclick="document.getElementById('date-picker-wrap').style.display='none'" style="padding:8px 12px;border:1px solid #E2E8F0;border-radius:6px;background:white;font-size:13px;cursor:pointer;">Cancel</button>
       </div>
     </div>
 
@@ -272,6 +284,7 @@
   let catChartInstance = null;
   let currentImageBase64 = null;
   let currentImageUrl = null;
+  let timerHandle = null;
 
   const $ = id => document.getElementById(id);
   const show = (id, on) => $(id).classList.toggle('hide', !on);
@@ -355,7 +368,9 @@
     show('dash', !none);
     $('del-client-btn').disabled = none;
     $('job-title').textContent = none ? 'No jobs yet' : (currentClient() || {}).name;
-    if (!none) { syncUrl(); await loadReceipts(); }
+    $('start-card').style.display = none ? 'none' : 'flex';
+    if (none && timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+    if (!none) { syncUrl(); renderStartDate(); await loadReceipts(); }
   }
 
   const currentClientId = () => parseInt($('client').value, 10);
@@ -372,7 +387,9 @@
     try { localStorage.setItem(CLIENT_KEY, $('client').value); } catch (e) {}
     const c = currentClient();
     $('job-title').textContent = c ? c.name : '--';
+    $('date-picker-wrap').style.display = 'none';
     syncUrl();
+    renderStartDate();
     loadReceipts();
     if ($('tab-bills').classList.contains('active')) loadBills();
   }
@@ -421,6 +438,63 @@
     try { localStorage.removeItem(CLIENT_KEY); } catch (e) {}
     window.history.replaceState({}, '', '/');
     await loadClients();
+  }
+
+  // --- project start date -----------------------------------------------
+
+  function showDatePicker() {
+    const wrap = $('date-picker-wrap');
+    const open = wrap.style.display !== 'none';
+    wrap.style.display = open ? 'none' : 'block';
+    if (!open) $('start-date-input').value = (currentClient() || {}).start_date || '';
+  }
+
+  async function saveStartDate() {
+    const value = $('start-date-input').value;
+    const c = currentClient();
+    if (!c) return;
+    const r = await api('/clients/' + c.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_date: value })
+    });
+    if (r.ok) {
+      c.start_date = value || null;   // keep the cached copy in step
+      $('date-picker-wrap').style.display = 'none';
+      renderStartDate();
+    }
+  }
+
+  function renderStartDate() {
+    const c = currentClient();
+    const start = c && c.start_date;
+    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+
+    if (!start) {
+      $('start-date-label').textContent = 'No start date set';
+      $('project-timer').textContent = '--';
+      $('start-date-input').value = '';
+      return;
+    }
+    const pretty = new Date(start + 'T00:00:00')
+      .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    $('start-date-label').innerHTML = 'Project started <span id="start-date-display">' + esc(pretty) + '</span>';
+    $('start-date-input').value = start;
+    updateTimer();
+    timerHandle = setInterval(updateTimer, 1000);
+  }
+
+  function updateTimer() {
+    const c = currentClient();
+    if (!c || !c.start_date) { $('project-timer').textContent = '--'; return; }
+    const diff = Math.floor((new Date() - new Date(c.start_date + 'T00:00:00')) / 1000);
+    if (diff < 0) { $('project-timer').textContent = 'Starts soon'; return; }
+    const days = Math.floor(diff / 86400);
+    const hours = Math.floor((diff % 86400) / 3600);
+    const mins = Math.floor((diff % 3600) / 60);
+    const secs = diff % 60;
+    $('project-timer').textContent = days + 'd ' + String(hours).padStart(2, '0') + 'h ' +
+      String(mins).padStart(2, '0') + 'm ' + String(secs).padStart(2, '0') + 's';
   }
 
   // --- receipts ---------------------------------------------------------

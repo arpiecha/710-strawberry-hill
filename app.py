@@ -152,6 +152,15 @@ def update_client(client_id: int):
             client.address = (data.get("address") or "").strip() or None
         if "notes" in data:
             client.notes = (data.get("notes") or "").strip() or None
+        if "start_date" in data:
+            raw = (data.get("start_date") or "").strip()
+            if not raw:
+                client.start_date = None
+            else:
+                try:
+                    client.start_date = datetime.strptime(raw, "%Y-%m-%d").date()
+                except ValueError:
+                    return jsonify({"error": "Start date must be YYYY-MM-DD"}), 400
 
         session.commit()
         return jsonify(client.to_dict())
