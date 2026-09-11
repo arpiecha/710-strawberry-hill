@@ -159,6 +159,34 @@ class Bill(Base):
         }
 
 
+class Setting(Base):
+    """Small key/value store for things changed from the UI."""
+
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+def get_setting(key: str) -> str | None:
+    with SessionLocal() as session:
+        row = session.get(Setting, key)
+        return row.value if row else None
+
+
+def set_setting(key: str, value: str) -> None:
+    with SessionLocal() as session:
+        row = session.get(Setting, key)
+        if row is None:
+            session.add(Setting(key=key, value=value))
+        else:
+            row.value = value
+        session.commit()
+
+
 def init_db() -> None:
     Base.metadata.create_all(engine)
     _add_missing_columns()

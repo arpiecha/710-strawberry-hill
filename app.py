@@ -5,6 +5,7 @@ Adding a client is a form, not a deployment.
 """
 
 import base64
+import hashlib
 import hmac
 import logging
 import os
@@ -16,7 +17,8 @@ from sqlalchemy import func, select
 
 import storage
 from claude_receipts import CATEGORIES, analyze_receipt
-from db import Bill, Client, Receipt, SessionLocal, init_db, unique_slug
+from db import (Bill, Client, Receipt, SessionLocal, get_setting, init_db,
+                set_setting, unique_slug)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -32,10 +34,62 @@ CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type", "X
 
 # --- auth ---------------------------------------------------------------
 
+PASSWORD_KEY = "admin_password"
+
+# Verifying a PBKDF2 hash costs ~100ms, which is far too slow to repeat on
+# every request. The passcode is a single shared value, so remember the one
+# that last verified and against which stored hash, and only re-derive when
+# either changes.
+_verified = {"raw": None, "against": None}
+
+
+def _hash_password(password: str, salt: bytes | None = None) -> str:
+    salt = salt or os.urandom(16)
+    iterations = 200_000
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations)
+    return f"pbkdf2${iterations}${salt.hex()}${digest.hex()}"
+
+
+def _check_hash(password: str, stored: str) -> bool:
+    try:
+        scheme, iterations, salt_hex, digest_hex = stored.split("$")
+        if scheme != "pbkdf2":
+            return False
+        digest = hashlib.pbkdf2_hmac(
+            "sha256", password.encode(), bytes.fromhex(salt_hex), int(iterations)
+        )
+        return hmac.compare_digest(digest.hex(), digest_hex)
+    except Exception:
+        return False
+
+
 def password_ok() -> bool:
-    """Accept the password from the header, or from ?key= for <img>/<a> links."""
+    """Accept the password from the header, or from ?key= for <img>/<a> links.
+
+    The passcode lives in the database once it has been changed from the UI;
+    until then the ADMIN_PASSWORD environment variable is the passcode.
+    """
     supplied = request.headers.get("X-Admin-Password") or request.args.get("key") or ""
-    return hmac.compare_digest(supplied, ADMIN_PASSWORD)
+    if not supplied:
+        return False
+
+    try:
+        stored = get_setting(PASSWORD_KEY)
+    except Exception:
+        logger.exception("Could not read the stored passcode; falling back to the env var")
+        stored = None
+
+    if not stored:
+        return hmac.compare_digest(supplied, ADMIN_PASSWORD)
+
+    if (_verified["against"] == stored and _verified["raw"] is not None
+            and hmac.compare_digest(supplied, _verified["raw"])):
+        return True
+
+    if _check_hash(supplied, stored):
+        _verified["raw"], _verified["against"] = supplied, stored
+        return True
+    return False
 
 
 def require_auth():
@@ -408,6 +462,30 @@ def delete_bill(bill_id: int):
         session.delete(bill)
         session.commit()
         return jsonify({"success": True})
+
+
+# --- settings -----------------------------------------------------------
+
+@app.route("/settings/password", methods=["POST"])
+def change_password():
+    if (err := require_auth()):
+        return err
+    data = request.get_json(silent=True) or {}
+    current = (data.get("current_password") or "").strip()
+    new = (data.get("new_password") or "").strip()
+
+    if len(new) < 4:
+        return jsonify({"success": False, "error": "New passcode must be at least 4 characters"}), 400
+
+    stored = get_setting(PASSWORD_KEY)
+    ok = _check_hash(current, stored) if stored else hmac.compare_digest(current, ADMIN_PASSWORD)
+    if not ok:
+        return jsonify({"success": False, "error": "Current passcode is incorrect"}), 403
+
+    set_setting(PASSWORD_KEY, _hash_password(new))
+    _verified["raw"], _verified["against"] = None, None
+    logger.info("Passcode changed")
+    return jsonify({"success": True})
 
 
 if __name__ == "__main__":

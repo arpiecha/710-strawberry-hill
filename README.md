@@ -27,6 +27,16 @@ Dashboard → **+ New client** → name (and optionally address and notes) → A
 That is the whole setup. The job appears in the phone page's dropdown straight
 away.
 
+## Project tab
+
+Rename the project (the name at the top of the page), change the passcode,
+and pick light, dark or auto for the theme. The theme choice is per device
+and the phone page follows it.
+
+The passcode lives in the database once it has been changed here;
+`ADMIN_PASSWORD` is only the starting value. Changing it signs out every
+other device.
+
 ## Bills due
 
 Each job has a **Bills due** list: a name, the day of the month it's due, and
@@ -46,7 +56,7 @@ Everything is one Railway project:
 | Variable | What it is |
 | --- | --- |
 | `DATABASE_URL` | Postgres connection string |
-| `ADMIN_PASSWORD` | The one password for both pages |
+| `ADMIN_PASSWORD` | Starting passcode. Once changed in the Project tab, the stored one wins |
 | `ANTHROPIC_API_KEY` | Used to read receipts |
 | `RECEIPT_STORAGE_DIR` | Where photos are written. `/data/receipts` |
 
@@ -92,6 +102,8 @@ POST   /save                       {client_id, date, store, category, type,
                                     source, force?}
 DELETE /receipts/<id>
 GET    /receipts/<id>/image        the photo behind View
+
+POST   /settings/password          {current_password, new_password}
 
 GET    /clients/<id>/bills         soonest first
 POST   /clients/<id>/bills         {name, due_day, amount?, notes?}
