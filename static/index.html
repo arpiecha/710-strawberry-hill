@@ -152,11 +152,27 @@
     .logo-row { display:flex;justify-content:center;margin-bottom:1rem; }
     .header { display:flex;align-items:flex-start;justify-content:space-between;
               gap:12px;margin-bottom:1.5rem; }
-    .head-name { display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0; }
+    .head-name { display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;position:relative; }
     .head-name h1 { font-size:22px;font-weight:600;line-height:1.25; }
-    .head-name select { margin-top:4px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;
-                        font-size:13px;font-family:inherit;outline:none;background:var(--surface);
-                        color:var(--text);max-width:220px; }
+    /* The project name doubles as the switcher once there is more than one. */
+    .job-switch { display:flex;align-items:center;gap:6px;padding:0;border:none;background:none;
+                  color:inherit;font-family:inherit;text-align:left;max-width:100%; }
+    .job-switch:hover { background:none; }
+    .job-switch h1 { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .job-switch:disabled { cursor:default; }
+    .job-chev { font-size:14px;color:var(--muted);line-height:1;transition:transform 0.15s; }
+    .job-switch[aria-expanded="true"] .job-chev { transform:rotate(180deg); }
+    .job-menu { display:none;position:absolute;top:100%;left:0;z-index:900;min-width:220px;
+                max-width:min(320px,80vw);max-height:60vh;overflow-y:auto;margin-top:4px;
+                background:var(--surface);border:1px solid var(--border);border-radius:8px;
+                box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:4px; }
+    .job-menu.open { display:block; }
+    .job-menu button { display:flex;align-items:center;justify-content:space-between;gap:10px;
+                       width:100%;border:none;background:none;border-radius:6px;padding:9px 10px;
+                       font-size:13px;color:var(--text);text-align:left; }
+    .job-menu button:hover { background:var(--hover); }
+    .job-menu button.current { font-weight:600; }
+    .job-menu .count { font-size:11px;color:var(--muted);flex-shrink:0; }
     .head-actions { display:flex;justify-content:flex-end;align-items:flex-start;gap:8px; }
     .head-actions button:disabled { opacity:0.5;cursor:default; }
     .logo-mark { font-size:22px; }
@@ -166,8 +182,6 @@
       .logo-mark { font-size:19px; }
       .head-actions button { padding:7px 12px; }
     }
-    .job-admin { display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:1.5rem 0 0.5rem; }
-    .job-admin button { font-size:12px;padding:6px 14px;color:var(--muted); }
     .theme-row { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
     .theme-btn { padding:12px 8px;font-size:13px;border:1px solid var(--border);border-radius:8px;
                  background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit; }
@@ -206,9 +220,13 @@
     </div>
     <div class="header">
       <div class="head-name">
-        <h1 id="job-title">--</h1>
+        <button class="job-switch" id="job-switch" onclick="toggleJobMenu()" aria-haspopup="true" aria-expanded="false">
+          <h1 id="job-title">--</h1>
+          <span class="job-chev" id="job-chev" aria-hidden="true">▾</span>
+        </button>
         <span class="last-updated" id="last-updated">Loading...</span>
         <select id="client" onchange="clientChanged()" class="hide"></select>
+        <div class="job-menu" id="job-menu"></div>
       </div>
       <div class="head-actions">
         <button onclick="loadReceipts()">Refresh</button>
@@ -225,8 +243,11 @@
       </div>
     </div>
 
-    <div id="no-clients" class="error hide" style="margin-bottom:1rem;">
-      No projects yet — click <strong>+ New Project</strong> to add your first one. That is the whole setup.
+    <!-- A fresh install has nothing to show, so the only way in is here. Extra
+         projects are a paid add-on, so there is no button once one exists. -->
+    <div id="no-clients" class="hide" style="margin-bottom:1rem;text-align:center;">
+      <div class="error" style="margin-bottom:12px;">No projects yet — add your first one below. That is the whole setup.</div>
+      <button onclick="openNewClient()">+ New Project</button>
     </div>
 
     <!-- Upload Receipt Modal -->
@@ -387,10 +408,6 @@
     </div>
     </div><!-- end dash -->
 
-    <div class="job-admin">
-      <button onclick="openNewClient()">+ New Project</button>
-    </div>
-
   </div>
   </div>
 
@@ -493,9 +510,9 @@
     }
 
     const none = clients.length === 0;
-    // With a single job the picker just repeats the heading, so only show it
-    // once there is something to switch between.
-    show('client', clients.length > 1);
+    // The heading itself is the picker; the select behind it stays hidden and
+    // holds which job is showing.
+    renderJobMenu();
     show('no-clients', none);
     show('dash', !none);
     $('del-client-btn').disabled = none;
@@ -515,10 +532,50 @@
     if (window.location.pathname !== path) window.history.replaceState({}, '', path);
   }
 
+  // --- project switcher -------------------------------------------------
+
+  function renderJobMenu() {
+    const menu = $('job-menu');
+    const many = clients.length > 1;
+    show('job-chev', many);
+    $('job-switch').disabled = !many;
+    if (!many) { closeJobMenu(); menu.innerHTML = ''; return; }
+    const here = currentClientId();
+    menu.innerHTML = clients.map(c =>
+      '<button onclick="pickJob(' + c.id + ')" class="' + (c.id === here ? 'current' : '') + '">' +
+        '<span>' + (c.id === here ? '✓ ' : '') + esc(c.name) + '</span>' +
+        '<span class="count">' + (c.receipt_count || 0) + '</span>' +
+      '</button>').join('');
+  }
+
+  function toggleJobMenu() {
+    const menu = $('job-menu');
+    const open = !menu.classList.contains('open');
+    menu.classList.toggle('open', open);
+    $('job-switch').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function closeJobMenu() {
+    $('job-menu').classList.remove('open');
+    $('job-switch').setAttribute('aria-expanded', 'false');
+  }
+
+  function pickJob(id) {
+    closeJobMenu();
+    if (id === currentClientId()) return;
+    $('client').value = id;
+    clientChanged();
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.head-name')) closeJobMenu();
+  });
+
   function clientChanged() {
     try { localStorage.setItem(CLIENT_KEY, $('client').value); } catch (e) {}
     const c = currentClient();
     $('job-title').textContent = c ? c.name : '--';
+    renderJobMenu();
     syncUrl();
     renderStartDate();
     loadReceipts();
@@ -538,7 +595,9 @@
   }
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && $('photo-modal').classList.contains('active')) closeModal('photo-modal');
+    if (e.key !== 'Escape') return;
+    if ($('photo-modal').classList.contains('active')) closeModal('photo-modal');
+    closeJobMenu();
   });
 
   function photoUrl(id) {

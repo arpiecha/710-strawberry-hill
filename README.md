@@ -23,8 +23,18 @@ Receipt** there lets you take a photo or pick one from the library.
 
 ## Adding a job
 
-Dashboard → **+ New Project** → name (and optionally address and notes) → Add.
-That is the whole setup.
+A fresh install shows **+ New Project** — name (and optionally address and
+notes) → Add. That is the whole setup.
+
+Extra jobs are a paid add-on, so once a job exists the button is gone from the
+page. To add another, `POST /clients` with the passcode, or put the button back
+by moving it out of the `#no-clients` block in `static/index.html`.
+
+## Switching jobs
+
+With more than one job, the name at the top of the page becomes the switcher:
+tap it for the list, with each job's receipt count beside it. One job and it is
+just the heading.
 
 ## Project tab
 
