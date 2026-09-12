@@ -39,8 +39,15 @@ just the heading.
 ## Project tab
 
 Rename the project (the name at the top of the page), set the start date the
-counter at the top runs from, change the passcode, and pick light, dark or
-auto for the theme. The theme choice is per device.
+counter at the top runs from, change the passcode, edit the receipt
+categories, and pick light, dark or auto for the theme. The theme choice is
+per device.
+
+**Categories** are what the receipt form offers and what Claude is told to
+file receipts under. They start as Materials, Labor, Mortgage and MISC and
+live in the database once edited. Removing one leaves receipts already filed
+under it alone — they keep their label, the category just leaves the picker.
+There is always at least one.
 
 The passcode lives in the database once it has been changed here;
 `ADMIN_PASSWORD` is only the starting value. Changing it signs out every
@@ -112,6 +119,10 @@ DELETE /receipts/<id>
 GET    /receipts/<id>/image        the photo behind View
 
 POST   /settings/password          {current_password, new_password}
+
+GET    /categories                 with a receipt count each
+POST   /categories                 {name}
+DELETE /categories/<name>
 
 GET    /clients/<id>/bills         soonest first
 POST   /clients/<id>/bills         {name, due_day, amount?, notes?}

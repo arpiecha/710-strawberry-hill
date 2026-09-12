@@ -206,6 +206,13 @@
       .logo-mark { font-size:19px; }
       .head-actions button { padding:7px 12px; }
     }
+    .cat-row { display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border-soft); }
+    .cat-row:last-child { border-bottom:none; }
+    .cat-dot { width:11px;height:11px;border-radius:3px;flex-shrink:0; }
+    .cat-name { flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .cat-count { font-size:12px;color:var(--muted);flex-shrink:0; }
+    .cat-del { padding:4px 9px;font-size:13px;line-height:1;color:var(--muted);border-color:transparent;background:none; }
+    .cat-del:hover { color:#DC2626;background:var(--hover); }
     .theme-row { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
     .theme-btn { padding:12px 8px;font-size:13px;border:1px solid var(--border);border-radius:8px;
                  background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit; }
@@ -415,6 +422,17 @@
       </div>
 
       <div class="section">
+        <div class="section-title">Receipt Categories</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">What the receipt form offers and what Claude files receipts under. Removing one leaves receipts already filed under it alone.</div>
+        <div id="cat-list"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <input type="text" id="cat-new" placeholder="New category" maxlength="40" onkeydown="if(event.key==='Enter')addCategory()" style="flex:1;min-width:0;padding:9px 12px;font-size:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;outline:none;background:var(--surface);color:var(--text);">
+          <button id="cat-add" onclick="addCategory()" style="padding:9px 16px;font-size:14px;background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap;">Add</button>
+        </div>
+        <div id="s-cat-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;margin-top:8px;"></div>
+      </div>
+
+      <div class="section">
         <div class="section-title">Appearance</div>
         <div class="theme-row">
           <button class="theme-btn" id="theme-light" onclick="setTheme('light')">☀️ Light</button>
@@ -450,10 +468,21 @@
     'Mortgage': '#7F77DD',
     'MISC': '#888780'
   };
+  // Categories added later get a colour off this list, picked by name so the
+  // same category keeps the same colour between visits.
+  const EXTRA_COLORS = ['#D97706', '#DB2777', '#0891B2', '#65A30D', '#9333EA', '#E11D48', '#0284C7', '#CA8A04'];
+  function catColor(name) {
+    if (CAT_COLORS[name]) return CAT_COLORS[name];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 9973;
+    return EXTRA_COLORS[h % EXTRA_COLORS.length];
+  }
 
   let password = '';
   let clients = [];
   let allReceipts = [];
+  let categories = [{ name: 'Materials', receipts: 0 }, { name: 'Labor', receipts: 0 },
+                    { name: 'Mortgage', receipts: 0 }, { name: 'MISC', receipts: 0 }];
   let catChartInstance = null;
   let currentImageBase64 = null;
   let currentImageUrl = null;
@@ -496,7 +525,63 @@
   function startApp() {
     $('lock-screen').style.display = 'none';
     $('main-content').style.display = 'block';
+    loadCategories();
     loadClients();
+  }
+
+  // --- categories -------------------------------------------------------
+
+  async function loadCategories() {
+    try {
+      const r = await api('/categories');
+      if (!r.ok) return;
+      categories = (await r.json()).categories;
+      renderCategories();
+    } catch (e) {}   // the pickers fall back to whatever was loaded before
+  }
+
+  function catNames() { return categories.map(c => c.name); }
+
+  function renderCategories() {
+    const only = categories.length === 1;
+    $('cat-list').innerHTML = categories.map(c =>
+      '<div class="cat-row">' +
+        '<span class="cat-dot" style="background:' + catColor(c.name) + '"></span>' +
+        '<span class="cat-name">' + esc(c.name) + '</span>' +
+        '<span class="cat-count">' + (c.receipts === 1 ? '1 receipt' : c.receipts + ' receipts') + '</span>' +
+        '<button class="cat-del" onclick="deleteCategory(' + JSON.stringify(c.name).replace(/"/g, '&quot;') + ')"' +
+          (only ? ' disabled title="Keep at least one category"' : ' title="Remove"') + '>✕</button>' +
+      '</div>').join('');
+  }
+
+  async function addCategory() {
+    const name = $('cat-new').value.trim();
+    if (!name) return;
+    const r = await api('/categories', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const data = await r.json();
+    if (!r.ok) return setStatus('s-cat-status', data.error || 'Could not add that category', false);
+    $('cat-new').value = '';
+    await loadCategories();
+    setStatus('s-cat-status', 'Added ' + name, true);
+  }
+
+  async function deleteCategory(name) {
+    const cat = categories.find(c => c.name === name);
+    const used = cat ? cat.receipts : 0;
+    const warn = used
+      ? '\n\n' + (used === 1 ? '1 receipt stays filed under it and keeps the label.'
+                             : used + ' receipts stay filed under it and keep the label.') +
+        ' The category just leaves the picker.'
+      : '';
+    if (!confirm('Remove the category "' + name + '"?' + warn)) return;
+    const r = await api('/categories/' + encodeURIComponent(name), { method: 'DELETE' });
+    const data = await r.json();
+    if (!r.ok) return setStatus('s-cat-status', data.error || 'Could not remove that category', false);
+    await loadCategories();
+    setStatus('s-cat-status', 'Removed ' + name, true);
   }
 
   // --- tabs -------------------------------------------------------------
@@ -804,7 +889,7 @@
     const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
     const labels = sorted.map(([k]) => k);
     const values = sorted.map(([, v]) => parseFloat(v.toFixed(2)));
-    const colors = labels.map(l => CAT_COLORS[l] || '#888780');
+    const colors = labels.map(catColor);
 
     $('chart-legend').innerHTML = labels.map((l, i) =>
       '<span class="legend-item"><span class="legend-dot" style="background:' + colors[i] + '"></span>' +
@@ -951,7 +1036,13 @@
 
   function receiptForm(r, warning) {
     const items = Array.isArray(r.items) ? r.items.join(', ') : (r.items || '');
-    const cat = ['Materials', 'Labor', 'Mortgage', 'MISC'].includes(r.category) ? r.category : 'MISC';
+    // Claude can come back with a category that has since been removed, and a
+    // saved receipt can carry an old one — offer it rather than silently
+    // rewriting what it says.
+    const names = catNames();
+    const known = r.category && names.includes(r.category);
+    const choices = known || !r.category ? names : names.concat(r.category);
+    const cat = known ? r.category : (names.includes('MISC') ? 'MISC' : names[names.length - 1]);
     $('modal-body').innerHTML =
       (currentImageUrl ? '<img class="modal-preview" src="' + currentImageUrl + '" alt="Receipt">' : '') +
       '<div id="m-status" class="modal-status ' + (warning ? 'error' : '') + '">' + esc(warning) + '</div>' +
@@ -959,7 +1050,7 @@
       '<div class="modal-field"><label>Amount</label><input id="m-amount" type="number" step="0.01" value="' + (r.total != null ? r.total : '') + '"></div>' +
       '<div class="modal-field"><label>Date</label><input id="m-date" type="date" value="' + esc(r.date || today()) + '"></div>' +
       '<div class="modal-field"><label>Category</label><select id="m-category">' +
-        ['Materials', 'Labor', 'Mortgage', 'MISC'].map(c => '<option' + (c === cat ? ' selected' : '') + '>' + c + '</option>').join('') +
+        choices.map(c => '<option' + (c === cat ? ' selected' : '') + '>' + esc(c) + '</option>').join('') +
       '</select></div>' +
       '<div class="modal-field"><label>Type</label><select id="m-type">' +
         '<option value="purchase"' + (r.type !== 'return' ? ' selected' : '') + '>Purchase</option>' +
@@ -1038,6 +1129,9 @@
     $('s-name').value = c ? c.name : '';
     $('s-name-status').style.display = 'none';
     $('s-date-status').style.display = 'none';
+    $('s-cat-status').style.display = 'none';
+    $('cat-new').value = '';
+    loadCategories();   // the receipt counts move as receipts come in
     $('s-pass-status').style.display = 'none';
     $('s-del-status').style.display = 'none';
     $('start-date-input').value = c ? (c.start_date || '') : '';

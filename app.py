@@ -7,6 +7,7 @@ Adding a client is a form, not a deployment.
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 from datetime import date, datetime
@@ -30,6 +31,24 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 app = Flask(__name__, static_folder=None)
 CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type", "X-Admin-Password"])
+
+
+# --- categories ---------------------------------------------------------
+
+CATEGORIES_KEY = "categories"
+
+
+def get_categories() -> list[str]:
+    """The editable category list, falling back to the ones the bot shipped with."""
+    stored = get_setting(CATEGORIES_KEY)
+    if stored:
+        try:
+            cats = json.loads(stored)
+            if isinstance(cats, list) and cats:
+                return [str(c) for c in cats]
+        except ValueError:
+            logger.warning("Stored categories are not valid JSON; using the defaults")
+    return list(CATEGORIES)
 
 
 # --- auth ---------------------------------------------------------------
@@ -274,7 +293,7 @@ def analyze_endpoint():
         return jsonify({"error": "Empty photo"}), 400
     mime_type = file.content_type or "image/jpeg"
     try:
-        receipt = analyze_receipt(image_bytes, mime_type)
+        receipt = analyze_receipt(image_bytes, mime_type, get_categories())
         return jsonify({"success": True, "receipt": receipt})
     except Exception as e:
         logger.exception("Analyze failed")
@@ -307,9 +326,12 @@ def save_endpoint():
     # Returns are stored negative so summing the column gives net spend.
     amount = -abs(amount) if rtype == "return" else abs(amount)
 
-    category = (data.get("category") or "MISC").strip()
-    if category not in CATEGORIES:
-        category = "MISC"
+    # Anything off the current list is kept as sent: a receipt filed under a
+    # category that has since been removed keeps its label.
+    cats = get_categories()
+    category = (data.get("category") or "").strip() or (cats[-1] if cats else "MISC")
+    if len(category) > 40:
+        category = category[:40]
 
     raw_date = (data.get("date") or "").strip()
     try:
@@ -466,6 +488,59 @@ def delete_bill(bill_id: int):
 
 
 # --- settings -----------------------------------------------------------
+
+@app.route("/categories", methods=["GET"])
+def list_categories():
+    """The categories the pickers offer and Claude chooses from.
+
+    Receipts keep their category as plain text, so deleting a category never
+    touches receipts already filed under it — it only leaves the pickers.
+    """
+    if (err := require_auth()):
+        return err
+    cats = get_categories()
+    with SessionLocal() as session:
+        rows = (session.query(Receipt.category, func.count(Receipt.id))
+                .group_by(Receipt.category).all())
+    used = {name: count for name, count in rows}
+    return jsonify({"categories": [{"name": c, "receipts": used.get(c, 0)} for c in cats]})
+
+
+@app.route("/categories", methods=["POST"])
+def add_category():
+    if (err := require_auth()):
+        return err
+    name = ((request.get_json(silent=True) or {}).get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+    if len(name) > 40:
+        return jsonify({"error": "Keep the name under 40 characters"}), 400
+
+    cats = get_categories()
+    if any(c.lower() == name.lower() for c in cats):
+        return jsonify({"error": f"{name} is already a category"}), 409
+    cats.append(name)
+    set_setting(CATEGORIES_KEY, json.dumps(cats))
+    logger.info("Category added: %s", name)
+    return jsonify({"success": True, "categories": cats})
+
+
+@app.route("/categories/<path:name>", methods=["DELETE"])
+def delete_category(name: str):
+    if (err := require_auth()):
+        return err
+    cats = get_categories()
+    match = next((c for c in cats if c.lower() == name.strip().lower()), None)
+    if match is None:
+        return jsonify({"error": "No such category"}), 404
+    if len(cats) == 1:
+        return jsonify({"error": "Keep at least one category"}), 400
+
+    cats.remove(match)
+    set_setting(CATEGORIES_KEY, json.dumps(cats))
+    logger.info("Category removed: %s", match)
+    return jsonify({"success": True, "categories": cats})
+
 
 @app.route("/settings/password", methods=["POST"])
 def change_password():

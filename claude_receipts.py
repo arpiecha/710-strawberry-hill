@@ -57,10 +57,18 @@ Category guide:
 """
 
 
-def analyze_receipt(image_bytes: bytes, mime_type: str) -> dict:
+def analyze_receipt(image_bytes: bytes, mime_type: str, categories: list[str] | None = None) -> dict:
     client = anthropic.Anthropic(api_key=_api_key())
     b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
     logger.info("Sending image to Claude, size: %s bytes, mime: %s", len(image_bytes), mime_type)
+
+    # The categories are editable now. Rather than reword the tuned prompt, the
+    # current list rides along with the image when it differs from the default.
+    ask = "Analyze this receipt."
+    if categories and categories != CATEGORIES:
+        ask += (" The categories have changed: put it in exactly one of "
+                f"{', '.join(categories)} — use these instead of the ones in the "
+                "instructions above, and pick the closest fit.")
     message = client.messages.create(
         model="claude-sonnet-5",
         max_tokens=4000,
@@ -69,7 +77,7 @@ def analyze_receipt(image_bytes: bytes, mime_type: str) -> dict:
             "role": "user",
             "content": [
                 {"type": "image", "source": {"type": "base64", "media_type": mime_type, "data": b64}},
-                {"type": "text", "text": "Analyze this receipt."}
+                {"type": "text", "text": ask}
             ]
         }]
     )
