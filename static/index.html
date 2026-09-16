@@ -542,6 +542,12 @@
 
   function catNames() { return categories.map(c => c.name); }
 
+  // Dates are stored and sent as YYYY-MM-DD; on screen they read MM-DD-YYYY.
+  function showDate(value) {
+    const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? m[2] + '-' + m[3] + '-' + m[1] : (value || '');
+  }
+
   function renderCategories() {
     const only = categories.length === 1;
     $('cat-list').innerHTML = categories.map(c =>
@@ -721,7 +727,7 @@
   function openPhoto(id) {
     const r = allReceipts.find(x => x.id === id);
     const url = photoUrl(id);
-    $('photo-title').textContent = r ? r.store + ' — ' + r.date : 'Receipt';
+    $('photo-title').textContent = r ? r.store + ' — ' + showDate(r.date) : 'Receipt';
     $('photo-img').src = url;
     $('photo-open').href = url;
     $('photo-modal').classList.add('active');
@@ -930,7 +936,7 @@
         ? '<a href="#" onclick="openPhoto(' + r.id + ');return false;">view</a>'
         : '';
       return '<tr>' +
-        '<td style="width:90px">' + esc(r.date) + '</td>' +
+        '<td style="width:90px">' + esc(showDate(r.date)) + '</td>' +
         '<td style="width:130px">' + esc(r.store) + '</td>' +
         '<td style="width:100px">' + esc(r.category) + '</td>' +
         '<td style="width:70px"><span class="badge ' + (isReturn ? 'badge-return' : 'badge-purchase') + '">' + esc(r.type) + '</span></td>' +
