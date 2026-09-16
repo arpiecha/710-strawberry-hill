@@ -132,10 +132,12 @@ DELETE /bills/<id>
 ## Notes
 
 - **Returns** are stored as negative amounts, so the totals are net spend.
-- **Duplicates** are caught per job by matching the amount and the first word
-  of the store name. Receipts write store names inconsistently and the printed
-  date is unreliable, so this is what the original bot settled on. You always
-  get the choice to save anyway.
+- **Duplicates** are caught per job by matching the date and the amount. Store
+  names are not part of it — receipts write them inconsistently — so the same
+  total on the same day is what counts as already logged. Amounts compare as
+  whole cents and keep their sign, so a one-cent difference is a different
+  receipt and a return never collides with a purchase. You always get the
+  choice to save anyway.
 - **Photos** are shrunk to 1600px in the browser before upload. Phone photos
   are 5-10MB and the API rejects images over 5MB.
 - Photos live on the volume, not in the database. Keep the volume when moving

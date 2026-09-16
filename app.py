@@ -256,27 +256,21 @@ def delete_client(client_id: int):
 
 # --- receipts -----------------------------------------------------------
 
-def first_word(text: str) -> str:
-    parts = (text or "").strip().lower().split()
-    return parts[0] if parts else ""
+def find_duplicate(session, client_id: int, rdate: date, amount: float) -> Receipt | None:
+    """Same client, same date, same amount — whatever the store is called.
 
-
-def find_duplicate(session, client_id: int, store: str, amount: float) -> Receipt | None:
-    """Same client, same amount, same first word of the store name.
-
-    Carried over from the original bot, which found that matching the whole
-    store string was too strict (receipts render it inconsistently) and that
-    the date was unreliable. Scoped per client here, and the amount is
-    compared signed so a return never collides with a purchase.
+    Receipts render store names inconsistently, so the name is not part of the
+    test: the same total on the same day is what marks a receipt as already
+    logged. The amount is compared signed, so a return never collides with a
+    purchase, and in whole cents, because subtracting floats puts 66.54 and
+    66.55 a hair under a cent apart.
     """
-    word = first_word(store)
-    if not word:
-        return None
-    candidates = session.scalars(
-        select(Receipt).where(Receipt.client_id == client_id)
+    cents = round(amount * 100)
+    same_day = session.scalars(
+        select(Receipt).where(Receipt.client_id == client_id, Receipt.date == rdate)
     ).all()
-    for r in candidates:
-        if abs(float(r.amount) - amount) < 0.01 and first_word(r.store) == word:
+    for r in same_day:
+        if round(float(r.amount) * 100) == cents:
             return r
     return None
 
@@ -344,13 +338,14 @@ def save_endpoint():
             return jsonify({"error": "Client not found"}), 404
 
         if not data.get("force"):
-            dup = find_duplicate(session, client_id, store, amount)
+            dup = find_duplicate(session, client_id, rdate, amount)
             if dup is not None:
                 return jsonify({
                     "success": False,
                     "duplicate": True,
-                    "error": f"Looks like a duplicate — {dup.store} for ${abs(float(dup.amount)):.2f} "
-                             f"is already logged on {dup.date.isoformat()}.",
+                    "error": f"Looks like a duplicate — ${abs(float(dup.amount)):.2f} on "
+                             f"{dup.date.isoformat()} is already logged"
+                             f"{f' ({dup.store})' if dup.store else ''}.",
                 })
 
         receipt = Receipt(
