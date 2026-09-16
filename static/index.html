@@ -227,6 +227,59 @@
     .danger-btn:disabled { opacity:0.6;cursor:default; }
     [data-theme="dark"] .danger-zone { border-color:#7F1D1D; }
     [data-theme="dark"] .danger-zone .section-title { color:#F87171; }
+    /* --- construction draws --- */
+    /* With draws on there are up to seven figures across, and six digits does
+       not fit a 130px box. Widen the boxes and let the row wrap. */
+    .metrics { grid-template-columns:repeat(auto-fit, minmax(165px, 1fr)); }
+    .metric-value { white-space:nowrap; }
+    .metric.primary { border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent); }
+    .metric.primary .metric-value { font-size:25px; }
+    .overview-split { display:grid;grid-template-columns:1fr 340px;gap:1rem;align-items:start; }
+    .overview-split > .section { min-width:0; }   /* or a wide child pushes the page sideways */
+    /* Chart.js sizes the canvas itself and takes a moment to catch up when the
+       window narrows; this stops that moment scrolling the page sideways. */
+    #chart-box canvas { max-width:100%; }
+    .overview-split.no-draws { grid-template-columns:1fr; }
+    .overview-split .chart-section { order:1; }
+    .overview-split .draws-panel { order:2; }
+    .draws-panel .section-title { margin-bottom:12px; }
+    .add-draw-btn { width:100%;padding:10px;font-size:13px;font-weight:600;background:var(--accent);
+                    color:var(--on-accent);border:none;border-radius:6px;cursor:pointer;
+                    font-family:inherit;margin-bottom:12px; }
+    .add-draw-btn:hover { background:var(--accent-hi); }
+    .draw-row { display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px;
+                background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px; }
+    .draw-row > div:first-child { min-width:0; }
+    .draw-name { font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .draw-note { font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis; }
+    .draw-amount { font-size:14px;font-weight:600;color:#059669;white-space:nowrap; }
+    .draw-running { font-size:11px;color:var(--muted);white-space:nowrap;margin-top:2px; }
+    .draws-footer { font-size:13px;font-weight:600;padding:10px 0;border-top:1px solid var(--border);margin-top:4px; }
+    .loan-field { border-top:1px solid var(--border);padding-top:12px; }
+    .loan-field label { font-size:12px;color:var(--muted);display:block;margin-bottom:4px; }
+    .loan-field input { flex:1;min-width:0;padding:9px 12px;font-size:14px;border:1px solid var(--border);
+                        border-radius:8px;font-family:inherit;outline:none;background:var(--surface);color:var(--text); }
+    @media (max-width:560px) {
+      /* Two boxes across on a phone: the ring is emphasis enough there. */
+      .metric.primary .metric-value { font-size:22px; }
+    }
+    @media (max-width:780px) {
+      .overview-split { grid-template-columns:1fr; }
+      .overview-split .chart-section { order:2; }
+      .overview-split .draws-panel { order:1; }
+    }
+    /* An iOS-style switch, for a setting that is simply on or off. */
+    .switch-row { display:flex;align-items:center;justify-content:space-between;gap:12px; }
+    .switch { position:relative;display:inline-block;width:51px;height:31px;flex-shrink:0; }
+    .switch input { position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1; }
+    .switch .slider { position:absolute;inset:0;background:var(--border);border-radius:31px;
+                      transition:background 0.25s ease; }
+    .switch .slider::before { content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;
+                              border-radius:50%;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,0.25);
+                              transition:transform 0.25s ease; }
+    .switch input:checked + .slider { background:#34C759; }
+    .switch input:checked + .slider::before { transform:translateX(20px); }
+    .switch input:focus-visible + .slider { outline:2px solid var(--accent);outline-offset:2px; }
     .row-del { border:none;background:none;color:#94A3B8;cursor:pointer;padding:2px 6px;font-size:14px;font-family:inherit; }
     .row-del:hover { color:#DC2626; }
     .table-wrap { overflow-x:auto; }
@@ -351,17 +404,49 @@
     <div id="tab-overview" class="tab-content active">
     <div class="metrics">
       <div class="metric"><div class="metric-label">Total spent</div><div class="metric-value" id="m-total">--</div></div>
+      <div class="metric draws-only hide"><div class="metric-label">Draws received</div><div class="metric-value" id="m-draws">--</div></div>
+      <div class="metric primary draws-only hide"><div class="metric-label">Out of pocket</div><div class="metric-value" id="m-oop">--</div></div>
+      <div class="metric draws-only hide" id="m-loan-box"><div class="metric-label">Loan remaining</div><div class="metric-value" id="m-loan">--</div></div>
       <div class="metric"><div class="metric-label">Purchases</div><div class="metric-value green" id="m-purchases">--</div></div>
       <div class="metric"><div class="metric-label">Returns</div><div class="metric-value red" id="m-returns">--</div></div>
       <div class="metric"><div class="metric-label">Receipts</div><div class="metric-value" id="m-count">--</div></div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Spending by category</div>
-      <div class="legend" id="chart-legend"></div>
-      <div id="chart-unavailable" class="error hide" style="margin-bottom:12px;">Chart could not load. The totals above and the log below are unaffected.</div>
-      <div id="chart-box" style="position:relative;width:100%;height:260px;">
-        <canvas id="catChart" role="img" aria-label="Bar chart of spending by category"></canvas>
+    <div class="overview-split no-draws" id="overview-split">
+      <div class="section draws-panel draws-only hide" id="draws-panel">
+        <div class="section-title">Construction Draws</div>
+        <button class="add-draw-btn" onclick="toggleDrawForm()">+ Add draw</button>
+        <div id="draw-form" class="hide" style="margin-bottom:12px;">
+          <div class="modal-field"><label>Date</label>
+            <input type="date" id="d-date"></div>
+          <div class="modal-field"><label>Amount ($)</label>
+            <input type="number" id="d-amount" step="0.01" placeholder="0.00"></div>
+          <div class="modal-field"><label>Note</label>
+            <input type="text" id="d-note" placeholder="e.g. framing" maxlength="120"></div>
+          <div class="modal-actions">
+            <button class="modal-btn modal-btn-cancel" onclick="toggleDrawForm()">Cancel</button>
+            <button class="modal-btn modal-btn-confirm" onclick="addDraw()">Save draw</button>
+          </div>
+        </div>
+        <div id="draw-status" class="modal-status"></div>
+        <div id="draws-list"><div class="loading">Loading draws...</div></div>
+        <div class="draws-footer" id="draws-footer">Draws so far: $0.00</div>
+        <div class="loan-field">
+          <label for="loan-input">Approved loan amount</label>
+          <div style="display:flex;gap:6px;">
+            <input type="number" id="loan-input" step="0.01" placeholder="optional">
+            <button onclick="saveLoanAmount()">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section chart-section">
+        <div class="section-title">Spending by category</div>
+        <div class="legend" id="chart-legend"></div>
+        <div id="chart-unavailable" class="error hide" style="margin-bottom:12px;">Chart could not load. The totals above and the log below are unaffected.</div>
+        <div id="chart-box" style="position:relative;width:100%;height:260px;">
+          <canvas id="catChart" role="img" aria-label="Bar chart of spending by category"></canvas>
+        </div>
       </div>
     </div>
 
@@ -419,6 +504,21 @@
         <input type="password" id="s-confirm" placeholder="Confirm new passcode" autocomplete="new-password" style="width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;outline:none;background:var(--surface);color:var(--text);margin-bottom:8px;">
         <button onclick="savePasscode()" style="width:100%;padding:10px;font-size:14px;background:var(--accent);color:var(--on-accent);border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">Change Passcode</button>
         <div id="s-pass-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;margin-top:8px;"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Construction Draws</div>
+        <div class="switch-row">
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0;">
+            For a job on a construction loan. Adds Draws received and Out of pocket
+            to the dashboard, and a panel to log each draw. Off, none of it shows.
+          </p>
+          <label class="switch" title="Construction draws">
+            <input type="checkbox" id="s-draws-toggle" onchange="saveDrawsEnabled()" aria-label="Show construction draws for this project">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div id="s-draws-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;margin-top:8px;"></div>
       </div>
 
       <div class="section">
@@ -481,6 +581,7 @@
   let password = '';
   let clients = [];
   let allReceipts = [];
+  let allDraws = [];          // money IN: the construction loan draws for this job
   let categories = [{ name: 'Materials', receipts: 0 }, { name: 'Labor', receipts: 0 },
                     { name: 'Mortgage', receipts: 0 }, { name: 'MISC', receipts: 0 }];
   let catChartInstance = null;
@@ -491,6 +592,9 @@
   const $ = id => document.getElementById(id);
   const show = (id, on) => $(id).classList.toggle('hide', !on);
   const money = n => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // money() drops the sign, which suits a receipt row. Out of pocket can go
+  // negative once the draws run ahead of the spending, and that has to show.
+  const moneySigned = n => (n < -0.005 ? '-' : '') + money(n);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const today = () => new Date().toISOString().slice(0, 10);
@@ -851,6 +955,194 @@
       String(mins).padStart(2, '0') + 'm ' + String(secs).padStart(2, '0') + 's';
   }
 
+  // --- construction draws -----------------------------------------------
+  //
+  // Only for a job on a construction loan, so the whole thing is behind a
+  // switch in the Project tab. A draw is money IN and never an expense: it is
+  // never subtracted from a category or from what the job has cost.
+
+  const drawsOn = () => !!(currentClient() || {}).draws_enabled;
+  const loanAmount = () => {
+    const v = (currentClient() || {}).loan_amount;
+    return v ? Number(v) : null;
+  };
+
+  function applyDrawsVisibility() {
+    const on = drawsOn();
+    document.querySelectorAll('.draws-only').forEach(el => el.classList.toggle('hide', !on));
+    $('overview-split').classList.toggle('no-draws', !on);
+    if (on) show('m-loan-box', loanAmount() !== null);
+  }
+
+  async function loadDraws() {
+    const id = currentClientId();
+    if (!id || !drawsOn()) { allDraws = []; return; }
+    try {
+      const r = await api('/clients/' + id + '/draws');
+      if (!r.ok) throw new Error('Server error ' + r.status);
+      allDraws = await r.json();
+    } catch (e) {
+      allDraws = [];
+      $('draws-list').innerHTML = '<div class="loading">Could not load draws.</div>';
+    }
+  }
+
+  // Every figure comes from here, so the stat boxes, the draws panel and the
+  // export can never disagree.
+  function computeTotals() {
+    let purchases = 0, returns = 0;
+    allReceipts.forEach(r => { if (r.amount < 0) returns += Math.abs(r.amount); else purchases += r.amount; });
+    const totalSpent = purchases - returns;
+    const drawsReceived = allDraws.reduce((s, d) => s + Number(d.amount), 0);
+    const loan = loanAmount();
+    return {
+      purchases, returns, totalSpent, drawsReceived,
+      outOfPocket: totalSpent - drawsReceived,
+      loanRemaining: loan === null ? null : loan - drawsReceived,
+      count: allReceipts.length
+    };
+  }
+
+  function drawStatus(text, kind) {
+    const el = $('draw-status');
+    el.className = 'modal-status' + (kind ? ' ' + kind : '');
+    el.style.display = text ? 'block' : 'none';
+    el.textContent = text || '';
+  }
+
+  function renderDraws() {
+    if (!drawsOn()) return;
+    const t = computeTotals();
+    let running = 0;
+    const numbered = allDraws.map((d, i) => {
+      running += Number(d.amount);
+      return { ...d, number: i + 1, running };
+    });
+
+    $('draws-list').innerHTML = numbered.length === 0
+      ? '<div class="loading">No draws yet.</div>'
+      : numbered.slice().reverse().map(d => {
+          const when = new Date(d.date + 'T00:00:00')
+            .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          return '<div class="draw-row"><div>' +
+            '<div class="draw-name">Draw ' + d.number + ' · ' + esc(when) + '</div>' +
+            (d.note ? '<div class="draw-note">' + esc(d.note) + '</div>' : '') +
+            '</div><div style="text-align:right;">' +
+            '<div class="draw-amount">' + money(d.amount) + '</div>' +
+            '<div class="draw-running">' + money(d.running) + ' total</div>' +
+            '</div><button class="row-del" title="Delete this draw" onclick="deleteDraw(' +
+              d.id + ',' + d.number + ')">✕</button></div>';
+        }).join('');
+
+    const loan = loanAmount();
+    $('draws-footer').textContent = 'Draws so far: ' + money(t.drawsReceived) +
+      (loan === null ? '' : ' of ' + money(loan));
+    if (document.activeElement !== $('loan-input')) $('loan-input').value = loan === null ? '' : loan;
+  }
+
+  function toggleDrawForm() {
+    const form = $('draw-form');
+    const opening = form.classList.contains('hide');
+    form.classList.toggle('hide', !opening);
+    drawStatus('');
+    if (opening) {
+      $('d-date').value = today();
+      $('d-amount').value = '';
+      $('d-note').value = '';
+    }
+  }
+
+  async function addDraw() {
+    const id = currentClientId();
+    const date = $('d-date').value;
+    const amount = parseFloat($('d-amount').value);
+    const note = $('d-note').value.trim();
+    if (!date) return drawStatus('Pick the date you drew the money.', 'error');
+    if (!amount || amount <= 0) return drawStatus('Enter the amount of the draw.', 'error');
+
+    drawStatus('Saving...');
+    try {
+      const r = await api('/clients/' + id + '/draws', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, amount, note })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Could not save the draw');
+      $('draw-form').classList.add('hide');
+      await refreshDraws();
+      drawStatus('Draw added.', 'success');
+      setTimeout(() => drawStatus(''), 2000);
+    } catch (e) {
+      drawStatus(e.message, 'error');
+    }
+  }
+
+  async function deleteDraw(id, number) {
+    if (!confirm('Delete Draw ' + number + '? This cannot be undone.')) return;
+    drawStatus('Deleting...');
+    try {
+      const r = await api('/draws/' + id, { method: 'DELETE' });
+      if (!r.ok) throw new Error('Could not delete the draw');
+      await refreshDraws();
+      drawStatus('Draw deleted.', 'success');
+      setTimeout(() => drawStatus(''), 2000);
+    } catch (e) {
+      drawStatus(e.message, 'error');
+    }
+  }
+
+  async function refreshDraws() {
+    await loadDraws();
+    renderDraws();
+    renderMetrics();
+  }
+
+  async function saveLoanAmount() {
+    const c = currentClient();
+    if (!c) return;
+    const raw = $('loan-input').value.trim();
+    drawStatus('Saving...');
+    try {
+      const r = await api('/clients/' + c.id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loan_amount: raw === '' ? null : parseFloat(raw) })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Could not save the loan amount');
+      c.loan_amount = raw === '' ? null : parseFloat(raw);   // keep the cached copy in step
+      applyDrawsVisibility();
+      renderDraws();
+      renderMetrics();
+      drawStatus(raw === '' ? 'Loan amount cleared.' : 'Loan amount saved.', 'success');
+      setTimeout(() => drawStatus(''), 2000);
+    } catch (e) {
+      drawStatus(e.message, 'error');
+    }
+  }
+
+  async function saveDrawsEnabled() {
+    const c = currentClient();
+    const on = $('s-draws-toggle').checked;
+    if (!c) return;
+    const r = await api('/clients/' + c.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ draws_enabled: on })
+    });
+    if (!r.ok) {
+      $('s-draws-toggle').checked = !on;   // put the switch back where it was
+      return setStatus('s-draws-status', 'Could not save that', false);
+    }
+    c.draws_enabled = on;
+    applyDrawsVisibility();
+    await refreshDraws();
+    // Turning it off only hides it: the draws already logged stay in the
+    // database and come back with the switch.
+    setStatus('s-draws-status', on ? 'Draws are on for this project' : 'Draws are off for this project', true);
+  }
+
   // --- receipts ---------------------------------------------------------
 
   async function loadReceipts() {
@@ -865,21 +1157,28 @@
       $('table-container').innerHTML = '<div class="loading">Could not load receipts.</div>';
       return;
     }
+    applyDrawsVisibility();
+    await loadDraws();
     // Render each piece separately: a chart library that failed to load must
     // not be able to take the receipt log down with it.
     try { renderMetrics(); } catch (e) { console.error(e); }
+    try { renderDraws(); } catch (e) { console.error(e); }
     try { renderChart(); } catch (e) { console.error(e); }
     try { renderTable(); } catch (e) { console.error(e); }
     $('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   }
 
   function renderMetrics() {
-    let purchases = 0, returns = 0;
-    allReceipts.forEach(r => { if (r.amount < 0) returns += Math.abs(r.amount); else purchases += r.amount; });
-    $('m-total').textContent = money(purchases - returns);
-    $('m-purchases').textContent = money(purchases);
-    $('m-returns').textContent = money(returns);
-    $('m-count').textContent = allReceipts.length;
+    const t = computeTotals();
+    $('m-total').textContent = money(t.totalSpent);
+    $('m-purchases').textContent = money(t.purchases);
+    $('m-returns').textContent = money(t.returns);
+    $('m-count').textContent = t.count;
+    if (!drawsOn()) return;
+    $('m-draws').textContent = money(t.drawsReceived);
+    $('m-oop').textContent = moneySigned(t.outOfPocket);
+    show('m-loan-box', t.loanRemaining !== null);
+    if (t.loanRemaining !== null) $('m-loan').textContent = moneySigned(t.loanRemaining);
   }
 
   // Canvas cannot resolve CSS variables, so the chart reads the theme itself.
@@ -977,6 +1276,21 @@
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), 'Receipts');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Category', 'Total'], ...Object.entries(cats)]), 'By Category');
+    if (drawsOn()) {
+      const t = computeTotals();
+      let running = 0;
+      const draw_data = [['Draw', 'Date', 'Amount', 'Note', 'Running total']];
+      allDraws.forEach((d, i) => {
+        running += Number(d.amount);
+        draw_data.push([i + 1, d.date, Number(d.amount), d.note, running]);
+      });
+      draw_data.push([], ['Total spent', t.totalSpent], ['Draws received', t.drawsReceived],
+                     ['Out of pocket', t.outOfPocket]);
+      if (t.loanRemaining !== null) {
+        draw_data.push(['Approved loan amount', loanAmount()], ['Loan remaining', t.loanRemaining]);
+      }
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(draw_data), 'Draws');
+    }
     XLSX.writeFile(wb, (client ? client.slug : 'receipts') + '-receipts.xlsx');
   }
 
@@ -1140,6 +1454,9 @@
     loadCategories();   // the receipt counts move as receipts come in
     $('s-pass-status').style.display = 'none';
     $('s-del-status').style.display = 'none';
+    $('s-draws-status').style.display = 'none';
+    $('s-draws-toggle').checked = !!(c && c.draws_enabled);
+    $('s-draws-toggle').disabled = !c;
     $('start-date-input').value = c ? (c.start_date || '') : '';
     $('s-current').value = ''; $('s-new').value = ''; $('s-confirm').value = '';
     $('s-del-pass').value = '';

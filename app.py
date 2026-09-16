@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 
 import storage
 from claude_receipts import CATEGORIES, analyze_receipt
-from db import (Bill, Client, Receipt, SessionLocal, get_setting, init_db,
+from db import (Bill, Client, Draw, Receipt, SessionLocal, get_setting, init_db,
                 set_setting, unique_slug)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -235,6 +235,17 @@ def update_client(client_id: int):
                     client.start_date = datetime.strptime(raw, "%Y-%m-%d").date()
                 except ValueError:
                     return jsonify({"error": "Start date must be YYYY-MM-DD"}), 400
+        if "draws_enabled" in data:
+            client.draws_enabled = bool(data.get("draws_enabled"))
+        if "loan_amount" in data:
+            raw = data.get("loan_amount")
+            if raw in (None, ""):
+                client.loan_amount = None
+            else:
+                try:
+                    client.loan_amount = round(float(raw), 2)
+                except (TypeError, ValueError):
+                    return jsonify({"error": "Loan amount must be a number"}), 400
 
         session.commit()
         return jsonify(client.to_dict())
@@ -479,6 +490,75 @@ def delete_bill(bill_id: int):
             return jsonify({"error": "Bill not found"}), 404
         session.delete(bill)
         session.commit()
+        return jsonify({"success": True})
+
+
+# --- draws --------------------------------------------------------------
+#
+# Money IN, kept apart from the receipts. Total spent and the category totals
+# are what the job cost and never move because of a draw; the draws only say
+# how much of it the bank has covered and how much came out of pocket.
+
+@app.route("/clients/<int:client_id>/draws", methods=["GET"])
+def list_draws(client_id: int):
+    if (err := require_auth()):
+        return err
+    with SessionLocal() as session:
+        if session.get(Client, client_id) is None:
+            return jsonify({"error": "Client not found"}), 404
+        draws = session.scalars(
+            select(Draw)
+            .where(Draw.client_id == client_id)
+            .order_by(Draw.date, Draw.id)     # oldest first: Draw 1 is the first one taken
+        ).all()
+        return jsonify([d.to_dict() for d in draws])
+
+
+@app.route("/clients/<int:client_id>/draws", methods=["POST"])
+def create_draw(client_id: int):
+    if (err := require_auth()):
+        return err
+    data = request.get_json(silent=True) or {}
+
+    try:
+        amount = round(float(data.get("amount")), 2)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Amount must be a number"}), 400
+    if amount <= 0:
+        return jsonify({"error": "A draw needs an amount"}), 400
+
+    raw_date = (data.get("date") or "").strip()
+    try:
+        ddate = datetime.strptime(raw_date, "%Y-%m-%d").date() if raw_date else date.today()
+    except ValueError:
+        return jsonify({"error": "Date must be YYYY-MM-DD"}), 400
+
+    with SessionLocal() as session:
+        if session.get(Client, client_id) is None:
+            return jsonify({"error": "Client not found"}), 404
+        draw = Draw(
+            client_id=client_id,
+            date=ddate,
+            amount=amount,
+            note=(data.get("note") or "").strip() or None,
+        )
+        session.add(draw)
+        session.commit()
+        logger.info("Saved draw %s for client %s", draw.id, client_id)
+        return jsonify(draw.to_dict()), 201
+
+
+@app.route("/draws/<int:draw_id>", methods=["DELETE"])
+def delete_draw(draw_id: int):
+    if (err := require_auth()):
+        return err
+    with SessionLocal() as session:
+        draw = session.get(Draw, draw_id)
+        if draw is None:
+            return jsonify({"error": "Draw not found"}), 404
+        session.delete(draw)
+        session.commit()
+        logger.info("Deleted draw %s", draw_id)
         return jsonify({"success": True})
 
 

@@ -11,6 +11,7 @@ import re
 from datetime import date, datetime
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -47,6 +48,10 @@ class Client(Base):
     address: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     start_date: Mapped[date | None] = mapped_column(Date)
+    # Only a job on a construction loan shows the draws counter, so it is off
+    # until it is turned on in the Project tab.
+    draws_enabled: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    loan_amount: Mapped[float | None] = mapped_column(Numeric(12, 2))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -55,6 +60,9 @@ class Client(Base):
         back_populates="client", cascade="all, delete-orphan", passive_deletes=True
     )
     bills: Mapped[list["Bill"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan", passive_deletes=True
+    )
+    draws: Mapped[list["Draw"]] = relationship(
         back_populates="client", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -66,6 +74,8 @@ class Client(Base):
             "address": self.address,
             "notes": self.notes,
             "start_date": self.start_date.isoformat() if self.start_date else None,
+            "draws_enabled": bool(self.draws_enabled),
+            "loan_amount": float(self.loan_amount) if self.loan_amount is not None else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
         if receipt_count is not None:
@@ -159,6 +169,40 @@ class Bill(Base):
         }
 
 
+class Draw(Base):
+    """Money IN: one payout from the job's construction loan.
+
+    Deliberately separate from receipts. A draw is not a negative expense, so
+    it never touches a category total or what the job has cost — it only says
+    how much of that cost the bank has covered.
+    """
+
+    __tablename__ = "draws"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    client_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    client: Mapped[Client] = relationship(back_populates="draws")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "client_id": self.client_id,
+            "date": self.date.isoformat() if self.date else None,
+            "amount": float(self.amount),
+            "note": self.note or "",
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class Setting(Base):
     """Small key/value store for things changed from the UI."""
 
@@ -201,7 +245,11 @@ def _add_missing_columns() -> None:
     """
     from sqlalchemy import inspect, text
 
-    wanted = {"clients": {"start_date": "DATE"}}
+    wanted = {"clients": {
+        "start_date": "DATE",
+        "draws_enabled": "BOOLEAN DEFAULT FALSE",
+        "loan_amount": "NUMERIC(12,2)",
+    }}
     inspector = inspect(engine)
     with engine.begin() as conn:
         for table, columns in wanted.items():

@@ -39,9 +39,9 @@ just the heading.
 ## Project tab
 
 Rename the project (the name at the top of the page), set the start date the
-counter at the top runs from, change the passcode, edit the receipt
-categories, and pick light, dark or auto for the theme. The theme choice is
-per device.
+counter at the top runs from, change the passcode, turn construction draws on
+or off, edit the receipt categories, and pick light, dark or auto for the
+theme. The theme choice is per device.
 
 **Categories** are what the receipt form offers and what Claude is told to
 file receipts under. They start as Materials, Labor, Mortgage and MISC and
@@ -52,6 +52,19 @@ There is always at least one.
 The passcode lives in the database once it has been changed here;
 `ADMIN_PASSWORD` is only the starting value. Changing it signs out every
 other device.
+
+## Construction draws
+
+Off unless a job is on a construction loan. The switch is in the Project tab;
+with it on the dashboard gains **Draws received**, **Out of pocket** (total
+spent minus the draws) and, once an approved loan amount is entered,
+**Loan remaining** — plus a **Construction Draws** panel beside the chart to
+log each draw with its date and note, see the running total, and delete one.
+The Excel export gains a Draws sheet.
+
+A draw is money **in**, never an expense: it is never subtracted from a
+category or from Total spent, so what the job cost reads the same either way.
+Turning the switch off only hides it — the draws stay and come back with it.
 
 ## Bills due
 
@@ -85,7 +98,7 @@ fails, and it says so. You can still enter receipts by hand.
 
 ```
 app.py               Flask: API + serves the dashboard
-db.py                Tables: clients, receipts, bills
+db.py                Tables: clients, receipts, bills, draws
 storage.py           Receipt photos on the volume
 claude_receipts.py   The prompt and the Claude call
 static/index.html    Dashboard
@@ -127,7 +140,15 @@ DELETE /categories/<name>
 GET    /clients/<id>/bills         soonest first
 POST   /clients/<id>/bills         {name, due_day, amount?, notes?}
 DELETE /bills/<id>
+
+GET    /clients/<id>/draws         oldest first
+POST   /clients/<id>/draws         {date, amount, note?}
+DELETE /draws/<id>
 ```
+
+The draws switch and the approved loan amount are per job, so they ride on
+the client: `PATCH /clients/<id>` with `{draws_enabled: true}` or
+`{loan_amount: 300000}` (`null` clears it).
 
 ## Notes
 
