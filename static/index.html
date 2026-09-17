@@ -253,9 +253,7 @@
     .draw-name { font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
     .draw-note { font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis; }
     .draw-amount { font-size:14px;font-weight:600;color:#059669;white-space:nowrap; }
-    .draw-running { font-size:11px;color:var(--muted);white-space:nowrap;margin-top:2px; }
-    .draws-footer { font-size:13px;font-weight:600;padding:10px 0;border-top:1px solid var(--border);margin-top:4px; }
-    .loan-field { border-top:1px solid var(--border);padding-top:12px; }
+    .loan-field { border-top:1px solid var(--border);padding-top:12px;margin-top:12px; }
     .loan-field label { font-size:12px;color:var(--muted);display:block;margin-bottom:4px; }
     .loan-field input { flex:1;min-width:0;padding:9px 12px;font-size:14px;border:1px solid var(--border);
                         border-radius:8px;font-family:inherit;outline:none;background:var(--surface);color:var(--text); }
@@ -430,7 +428,6 @@
         </div>
         <div id="draw-status" class="modal-status"></div>
         <div id="draws-list"><div class="loading">Loading draws...</div></div>
-        <div class="draws-footer" id="draws-footer">Draws so far: $0.00</div>
         <div class="loan-field">
           <label for="loan-input">Approved loan amount</label>
           <div style="display:flex;gap:6px;">
@@ -1012,12 +1009,9 @@
 
   function renderDraws() {
     if (!drawsOn()) return;
-    const t = computeTotals();
-    let running = 0;
-    const numbered = allDraws.map((d, i) => {
-      running += Number(d.amount);
-      return { ...d, number: i + 1, running };
-    });
+    // Draw 1 is the first one taken, so the list is numbered oldest first and
+    // then shown newest first. What they add up to is the Draws received box.
+    const numbered = allDraws.map((d, i) => ({ ...d, number: i + 1 }));
 
     $('draws-list').innerHTML = numbered.length === 0
       ? '<div class="loading">No draws yet.</div>'
@@ -1029,14 +1023,11 @@
             (d.note ? '<div class="draw-note">' + esc(d.note) + '</div>' : '') +
             '</div><div style="text-align:right;">' +
             '<div class="draw-amount">' + money(d.amount) + '</div>' +
-            '<div class="draw-running">' + money(d.running) + ' total</div>' +
             '</div><button class="row-del" title="Delete this draw" onclick="deleteDraw(' +
               d.id + ',' + d.number + ')">✕</button></div>';
         }).join('');
 
     const loan = loanAmount();
-    $('draws-footer').textContent = 'Draws so far: ' + money(t.drawsReceived) +
-      (loan === null ? '' : ' of ' + money(loan));
     if (document.activeElement !== $('loan-input')) $('loan-input').value = loan === null ? '' : loan;
   }
 
