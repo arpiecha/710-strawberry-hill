@@ -22,7 +22,7 @@
       --text:#1E293B; --muted:#64748B; --accent:#0D1B2A; --accent-hi:#132236;
       --hover:#F1F5F9; --on-accent:#FFFFFF;
       --shadow:rgba(0,0,0,0.5);
-      --dock-bg:rgba(255,255,255,0.86); --dock-edge:rgba(15,23,42,0.16);
+      --dock-bg:rgba(255,255,255,0.62); --dock-edge:rgba(15,23,42,0.14);
       --dock-ghost-hover:rgba(15,23,42,0.06);
       --dock-shadow:0 14px 38px rgba(15,23,42,0.26), 0 3px 10px rgba(15,23,42,0.12);
       --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.85);
@@ -32,7 +32,7 @@
       --text:#E2E8F0; --muted:#94A3B8; --accent:#06B6D4; --accent-hi:#0891B2;
       --hover:#1B2C41; --on-accent:#06182A;
       --shadow:rgba(0,0,0,0.7);
-      --dock-bg:rgba(14,26,42,0.88); --dock-edge:rgba(255,255,255,0.22);
+      --dock-bg:rgba(14,26,42,0.60); --dock-edge:rgba(255,255,255,0.20);
       --dock-ghost-hover:rgba(255,255,255,0.08);
       --dock-shadow:0 16px 42px rgba(0,0,0,0.62), 0 3px 10px rgba(0,0,0,0.4);
       --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.12);
@@ -129,8 +129,8 @@
             display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;
             border-radius:999px;border:1px solid var(--dock-edge);
             background:var(--dock-bg);
-            -webkit-backdrop-filter:blur(22px) saturate(180%);
-            backdrop-filter:blur(22px) saturate(180%);
+            -webkit-backdrop-filter:blur(30px) saturate(190%);
+            backdrop-filter:blur(30px) saturate(190%);
             box-shadow:var(--dock-shadow), var(--dock-sheen); }
     .dock-btn { display:flex;align-items:center;justify-content:center;gap:9px;
                 padding:13px 10px;border:none;border-radius:999px;cursor:pointer;
@@ -175,7 +175,7 @@
     .brand span { color:#06B6D4; }
     /* Logo centred on its own line above, then the name on the left with the
        timestamp beneath it and Refresh on the right, level with the name. */
-    .logo-row { display:flex;justify-content:center;margin-bottom:1rem; }
+    .logo-row { display:flex;justify-content:center;margin-bottom:1.9rem; }
     .header { display:flex;align-items:flex-start;justify-content:space-between;
               gap:12px;margin-bottom:1.5rem; }
     .head-name { display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;position:relative; }
@@ -223,11 +223,11 @@
     .job-menu .count { font-size:13px;color:var(--muted);flex-shrink:0;font-variant-numeric:tabular-nums; }
     .head-actions { display:flex;justify-content:flex-end;align-items:flex-start;gap:8px; }
     .head-actions button:disabled { opacity:0.5;cursor:default; }
-    .logo-mark { font-size:22px; }
+    .logo-mark { font-size:28px; }
     @media (max-width:560px) {
       .header { gap:8px; }
       .head-name h1 { font-size:18px; }
-      .logo-mark { font-size:19px; }
+      .logo-mark { font-size:24px; }
       .head-actions button { padding:7px 12px; }
     }
     .cat-row { display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border-soft); }
