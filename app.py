@@ -25,6 +25,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+# A job everyone on site should be able to open without being asked for a
+# passcode every time can set REQUIRE_PASSWORD=false. Anyone with the link
+# then has the run of that tracker, so it is off by default.
+REQUIRE_PASSWORD = os.environ.get("REQUIRE_PASSWORD", "true").strip().lower() not in ("0", "false", "no", "off")
 PORT = int(os.environ.get("PORT", "8080"))
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -88,6 +92,9 @@ def password_ok() -> bool:
     The passcode lives in the database once it has been changed from the UI;
     until then the ADMIN_PASSWORD environment variable is the passcode.
     """
+    if not REQUIRE_PASSWORD:
+        return True
+
     supplied = request.headers.get("X-Admin-Password") or request.args.get("key") or ""
     if not supplied:
         return False
@@ -149,8 +156,12 @@ def health():
 
 @app.route("/auth-check")
 def auth_check():
-    """Lets a page verify a password without fetching any data."""
-    return jsonify({"ok": password_ok()})
+    """Lets a page verify a password without fetching any data.
+
+    `required` is how the dashboard knows whether to show the lock screen at
+    all: with REQUIRE_PASSWORD off it goes straight to the job.
+    """
+    return jsonify({"ok": password_ok(), "required": REQUIRE_PASSWORD})
 
 
 # --- clients ------------------------------------------------------------

@@ -55,6 +55,11 @@ The passcode lives in the database once it has been changed here;
 `ADMIN_PASSWORD` is only the starting value. Changing it signs out every
 other device.
 
+To run a job with no passcode at all — everyone on site opens the link and is
+straight in — set `REQUIRE_PASSWORD=false` on the service. The lock screen and
+this box disappear, and anyone with the link can add and delete receipts, so
+it is on unless you turn it off.
+
 ## Construction draws
 
 Off unless a job is on a construction loan. The switch is in the Project tab;
@@ -88,6 +93,7 @@ Everything is one Railway project:
 | --- | --- |
 | `DATABASE_URL` | Postgres connection string |
 | `ADMIN_PASSWORD` | Starting passcode. Once changed in the Project tab, the stored one wins |
+| `REQUIRE_PASSWORD` | `false` opens the tracker to anyone with the link. Defaults to on |
 | `ANTHROPIC_API_KEY` | Used to read receipts |
 | `RECEIPT_STORAGE_DIR` | Where photos are written. `/data/receipts` |
 

@@ -509,7 +509,7 @@
         <div id="s-date-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;margin-top:8px;"></div>
       </div>
 
-      <div class="section">
+      <div class="section" id="pass-section">
         <div class="section-title">Passcode</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Changing it signs out every other device.</div>
         <input type="password" id="s-current" placeholder="Current passcode" autocomplete="current-password" style="width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;outline:none;background:var(--surface);color:var(--text);margin-bottom:8px;">
@@ -1635,12 +1635,13 @@
   (async function boot() {
     let saved = null;
     try { saved = localStorage.getItem(PWD_KEY); } catch (e) {}
-    if (saved) {
-      try {
-        const r = await fetch(API_BASE + '/auth-check', { headers: { 'X-Admin-Password': saved } });
-        if ((await r.json()).ok) { password = saved; startApp(); return; }
-      } catch (e) {}
-    }
+    try {
+      const r = await fetch(API_BASE + '/auth-check', { headers: { 'X-Admin-Password': saved || '' } });
+      const data = await r.json();
+      // A tracker running without a passcode says so here, and goes straight in.
+      if (data.required === false) { show('pass-section', false); startApp(); return; }
+      if (saved && data.ok) { password = saved; startApp(); return; }
+    } catch (e) {}
   })();
 </script>
 </body>
