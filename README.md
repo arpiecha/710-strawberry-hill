@@ -1,4 +1,6 @@
-# GC Tracker Template (`gc-tracker-template`)
+# 710 Strawberry Hill — job cost tracker
+
+Cloned from [`gc-tracker-model`](https://github.com/arpiecha/gc-tracker-model), which stays the template. Pull from there to take model improvements; this repo is free to diverge for this job.
 
 One receipt tracker for every job. This is the template repo the live tracker is deployed from. Snap a receipt on your phone, Claude reads
 it, it lands on the right job's dashboard with the photo attached.
