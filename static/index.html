@@ -39,7 +39,6 @@
     }
     /* Dark buttons carry white text in light mode and dark text on the cyan
        accent in dark mode, so the label colour has to follow the token. */
-    [data-theme="dark"] .upload-receipt-btn,
     [data-theme="dark"] .modal-btn-confirm,
     [data-theme="dark"] .tab.active { color: var(--on-accent); }
     [data-theme="dark"] .metric-value.green { color:#34D399; }
@@ -93,10 +92,6 @@
     .error { padding: 1rem; color: #991B1B; background: #FEE2E2; border-radius: 8px; font-size: 14px; line-height: 1.6; }
     .download-btn { width: 100%; margin-top: 1rem; padding: 10px; font-size: 14px; }
     a { color: #2563EB; }
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
-    .upload-receipt-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 14px; font-weight: 600; background: var(--accent); color: var(--surface); border: none; border-radius: 6px; cursor: pointer; font-family: inherit; letter-spacing: 0.03em; }
-    .manual-entry-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 14px; font-weight: 500; background: var(--surface); color: var(--accent); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-family: inherit; }
-    .manual-entry-btn:hover { background: var(--hover); }
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.active { display: flex; }
     /* Receipt photo viewer: the photo fills the modal, capped so the actions
