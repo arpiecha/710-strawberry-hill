@@ -22,12 +22,20 @@
       --text:#1E293B; --muted:#64748B; --accent:#0D1B2A; --accent-hi:#132236;
       --hover:#F1F5F9; --on-accent:#FFFFFF;
       --shadow:rgba(0,0,0,0.5);
+      --dock-bg:rgba(255,255,255,0.86); --dock-edge:rgba(15,23,42,0.16);
+      --dock-ghost-hover:rgba(15,23,42,0.06);
+      --dock-shadow:0 14px 38px rgba(15,23,42,0.26), 0 3px 10px rgba(15,23,42,0.12);
+      --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.85);
     }
     [data-theme="dark"] {
       --bg:#0B1420; --surface:#132236; --border:#24384F; --border-soft:#1B2C41;
       --text:#E2E8F0; --muted:#94A3B8; --accent:#06B6D4; --accent-hi:#0891B2;
       --hover:#1B2C41; --on-accent:#06182A;
       --shadow:rgba(0,0,0,0.7);
+      --dock-bg:rgba(14,26,42,0.88); --dock-edge:rgba(255,255,255,0.22);
+      --dock-ghost-hover:rgba(255,255,255,0.08);
+      --dock-shadow:0 16px 42px rgba(0,0,0,0.62), 0 3px 10px rgba(0,0,0,0.4);
+      --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.12);
     }
     /* Dark buttons carry white text in light mode and dark text on the cyan
        accent in dark mode, so the label colour has to follow the token. */
@@ -118,11 +126,32 @@
     .modal-status { padding: 10px; border-radius: 8px; font-size: 13px; margin-top: 8px; display: none; text-align: center; }
     .modal-status.success { background: #D1FAE5; color: #059669; display: block; }
     .modal-status.error { background: #FEE2E2; color: #DC2626; display: block; }
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
-    .upload-receipt-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 14px; font-weight: 600; background: var(--accent); color: var(--surface); border: none; border-radius: 6px; cursor: pointer; font-family: inherit; letter-spacing: 0.03em; }
-    .upload-receipt-btn:hover { background: var(--accent-hi); }
-    .manual-entry-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 14px; font-weight: 500; background: var(--surface); color: var(--accent); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-family: inherit; }
-    .manual-entry-btn:hover { background: var(--hover); }
+    /* The two ways in sit in a floating frosted bar at the bottom of the
+       screen, within thumb reach, rather than scrolling away with the page. */
+    .dock { position:fixed;left:50%;transform:translateX(-50%);z-index:800;
+            bottom:calc(14px + env(safe-area-inset-bottom));
+            width:min(440px, calc(100% - 28px));
+            display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;
+            border-radius:999px;border:1px solid var(--dock-edge);
+            background:var(--dock-bg);
+            -webkit-backdrop-filter:blur(22px) saturate(180%);
+            backdrop-filter:blur(22px) saturate(180%);
+            box-shadow:var(--dock-shadow), var(--dock-sheen); }
+    .dock-btn { display:flex;align-items:center;justify-content:center;gap:9px;
+                padding:13px 10px;border:none;border-radius:999px;cursor:pointer;
+                font-family:inherit;font-size:14px;font-weight:600;letter-spacing:0.01em;
+                background:none;color:var(--text);transition:background 0.18s, transform 0.12s; }
+    .dock-btn svg { width:21px;height:21px;flex-shrink:0;stroke-width:1.8; }
+    .dock-btn:active { transform:scale(0.97); }
+    .dock-btn.primary { background:var(--accent);color:var(--on-accent); }
+    .dock-btn.primary:hover { background:var(--accent-hi); }
+    .dock-btn.ghost:hover { background:var(--dock-ghost-hover); }
+    /* Nothing should end up hidden behind the bar. */
+    .container { padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
+    @media (max-width:420px) {
+      .dock-btn { font-size:13px;gap:7px;padding:12px 6px; }
+      .dock-btn svg { width:19px;height:19px; }
+    }
     .upload-status { text-align: center; padding: 10px; font-size: 13px; border-radius: 8px; margin-bottom: 1rem; display: none; }
     .upload-status.success { background: #D1FAE5; color: #059669; }
     .upload-status.error { background: #FEE2E2; color: #DC2626; }
@@ -384,14 +413,6 @@
 
     <div id="dash" class="hide">
     <input type="file" id="receipt-file-input" accept="image/*" style="display:none">
-    <div class="btn-row">
-      <button class="upload-receipt-btn" onclick="document.getElementById('receipt-file-input').click()">
-        📸 Upload Receipt
-      </button>
-      <button class="manual-entry-btn" onclick="openManualEntry()">
-        ✏️ Manual Entry
-      </button>
-    </div>
 
     <div class="tabs">
       <button class="tab active" onclick="switchTab('overview')">📊 Overview</button>
@@ -549,7 +570,23 @@
         <div id="s-del-status" style="font-size:13px;text-align:center;display:none;padding:8px;border-radius:8px;margin-top:8px;"></div>
       </div>
     </div>
+  <!-- The two ways in, always within thumb reach. -->
+  <nav class="dock" id="dock" aria-label="Add a receipt">
+    <button class="dock-btn primary" onclick="document.getElementById('receipt-file-input').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4.6 8.6h2.5l1.3-2.1h7.2l1.3 2.1h2.5a1.6 1.6 0 0 1 1.6 1.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 17V10.2a1.6 1.6 0 0 1 1.6-1.6z"/>
+        <circle cx="12" cy="13.4" r="3.3"/>
+      </svg><span>Upload Receipt</span>
+    </button>
+    <button class="dock-btn ghost" onclick="openManualEntry()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15.5 4.3a2 2 0 0 1 2.8 0l1.4 1.4a2 2 0 0 1 0 2.8L9.4 18.8l-4.2 1.4 1.4-4.2z"/>
+        <path d="M14.1 5.7 18.3 9.9"/>
+      </svg><span>Manual Entry</span>
+    </button>
+  </nav>
     </div><!-- end dash -->
+
 
   </div>
   </div>
