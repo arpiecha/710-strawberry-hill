@@ -22,7 +22,7 @@
       --text:#1E293B; --muted:#64748B; --accent:#0D1B2A; --accent-hi:#132236;
       --hover:#F1F5F9; --on-accent:#FFFFFF;
       --shadow:rgba(0,0,0,0.5);
-      --dock-bg:rgba(255,255,255,0.62); --dock-edge:rgba(15,23,42,0.14);
+      --dock-bg:rgba(255,255,255,0.5); --dock-edge:rgba(15,23,42,0.13);
       --dock-ghost-hover:rgba(15,23,42,0.06);
       --dock-shadow:0 14px 38px rgba(15,23,42,0.26), 0 3px 10px rgba(15,23,42,0.12);
       --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.85);
@@ -36,7 +36,7 @@
       --text:#E9EFF5; --muted:#7D8E9E; --accent:#3390EC; --accent-hi:#4A9FF0;
       --hover:#202C38; --on-accent:#FFFFFF;
       --shadow:rgba(0,0,0,0.7);
-      --dock-bg:rgba(23,33,43,0.62); --dock-edge:rgba(255,255,255,0.14);
+      --dock-bg:rgba(23,33,43,0.5); --dock-edge:rgba(255,255,255,0.13);
       --dock-ghost-hover:rgba(255,255,255,0.07);
       --dock-shadow:0 16px 42px rgba(0,0,0,0.62), 0 3px 10px rgba(0,0,0,0.4);
       --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.08);
@@ -130,12 +130,12 @@
        screen, within thumb reach, rather than scrolling away with the page. */
     .dock { position:fixed;left:50%;transform:translateX(-50%);z-index:800;
             bottom:calc(14px + env(safe-area-inset-bottom));
-            width:min(440px, calc(100% - 28px));
+            width:min(368px, calc(100% - 64px));
             display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;
             border-radius:999px;border:1px solid var(--dock-edge);
             background:var(--dock-bg);
-            -webkit-backdrop-filter:blur(30px) saturate(190%);
-            backdrop-filter:blur(30px) saturate(190%);
+            -webkit-backdrop-filter:blur(34px) saturate(200%);
+            backdrop-filter:blur(34px) saturate(200%);
             box-shadow:var(--dock-shadow), var(--dock-sheen); }
     .dock-btn { display:flex;align-items:center;justify-content:center;gap:9px;
                 padding:13px 10px;border:none;border-radius:999px;cursor:pointer;
