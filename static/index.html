@@ -27,38 +27,43 @@
       --dock-shadow:0 14px 38px rgba(15,23,42,0.26), 0 3px 10px rgba(15,23,42,0.12);
       --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.85);
     }
+    /* Dark mode follows Telegram's: a desaturated blue-grey rather than navy,
+       one soft blue accent instead of electric cyan, and status colours dropped
+       to tinted washes so nothing shouts on a dark screen. */
     [data-theme="dark"] {
-      --bg:#0B1420; --surface:#132236; --border:#24384F; --border-soft:#1B2C41;
-      --text:#E2E8F0; --muted:#94A3B8; --accent:#06B6D4; --accent-hi:#0891B2;
-      --hover:#1B2C41; --on-accent:#06182A;
+      color-scheme: dark;
+      --bg:#0E1621; --surface:#17212B; --border:#26333F; --border-soft:#1D2733;
+      --text:#E9EFF5; --muted:#7D8E9E; --accent:#3390EC; --accent-hi:#4A9FF0;
+      --hover:#202C38; --on-accent:#FFFFFF;
       --shadow:rgba(0,0,0,0.7);
-      --dock-bg:rgba(14,26,42,0.60); --dock-edge:rgba(255,255,255,0.20);
-      --dock-ghost-hover:rgba(255,255,255,0.08);
+      --dock-bg:rgba(23,33,43,0.62); --dock-edge:rgba(255,255,255,0.14);
+      --dock-ghost-hover:rgba(255,255,255,0.07);
       --dock-shadow:0 16px 42px rgba(0,0,0,0.62), 0 3px 10px rgba(0,0,0,0.4);
-      --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.12);
+      --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.08);
     }
-    /* Dark buttons carry white text in light mode and dark text on the cyan
-       accent in dark mode, so the label colour has to follow the token. */
     [data-theme="dark"] .modal-btn-confirm,
     [data-theme="dark"] .tab.active { color: var(--on-accent); }
-    [data-theme="dark"] .metric-value.green { color:#34D399; }
+    [data-theme="dark"] .metric-value.green,
+    [data-theme="dark"] .amount-pos { color:#6ECB78; }
     [data-theme="dark"] .metric-value.red,
-    [data-theme="dark"] .amount-neg { color:#F87171; }
-    [data-theme="dark"] .amount-pos { color:#34D399; }
-    [data-theme="dark"] .badge-purchase { background:#064E3B; color:#A7F3D0; }
-    [data-theme="dark"] .badge-return { background:#7F1D1D; color:#FECACA; }
-    [data-theme="dark"] .badge-soon { background:#78350F; color:#FDE68A; }
-    [data-theme="dark"] .badge-upcoming { background:#064E3B; color:#A7F3D0; }
-    [data-theme="dark"] .badge-today { background:#7F1D1D; color:#FECACA; }
-    [data-theme="dark"] .error { background:#7F1D1D; color:#FECACA; }
-    [data-theme="dark"] .modal-status.success { background:#064E3B; color:#A7F3D0; }
-    [data-theme="dark"] .modal-status.error { background:#7F1D1D; color:#FECACA; }
-    [data-theme="dark"] a { color:#67E8F9; }
+    [data-theme="dark"] .amount-neg { color:#EC7A6F; }
+    [data-theme="dark"] .badge-purchase,
+    [data-theme="dark"] .badge-upcoming { background:rgba(110,203,120,0.14); color:#8BD894; }
+    [data-theme="dark"] .badge-return,
+    [data-theme="dark"] .badge-today { background:rgba(236,122,111,0.14); color:#F2978D; }
+    [data-theme="dark"] .badge-soon { background:rgba(230,178,86,0.14); color:#E8BE72; }
+    [data-theme="dark"] .error,
+    [data-theme="dark"] .modal-status.error { background:rgba(236,122,111,0.13); color:#F2978D; }
+    [data-theme="dark"] .modal-status.success { background:rgba(110,203,120,0.13); color:#8BD894; }
+    [data-theme="dark"] .modal-spinner { border-top-color:var(--accent); }
+    [data-theme="dark"] .switch input:checked + .slider { background:#4FAE4E; }
+    [data-theme="dark"] a { color:#6AB3F3; }
     body { transition: background-color 0.15s, color 0.15s; }
 
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    input, select, textarea { font-size: 16px !important; }
+    input, select, textarea { font-size: 16px !important; background: var(--surface); color: var(--text); }
+    input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
     input[type="date"] { max-width: 100%; width: 100%; -webkit-appearance: none; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
     .container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
@@ -206,7 +211,7 @@
                 visibility:hidden;pointer-events:none;
                 transition:opacity 0.16s ease, transform 0.16s cubic-bezier(0.32,0.72,0,1), visibility 0.16s; }
     .job-menu.open { opacity:1;transform:none;visibility:visible;pointer-events:auto; }
-    [data-theme="dark"] .job-menu { background:rgba(24,38,56,0.82);border-color:rgba(255,255,255,0.12);
+    [data-theme="dark"] .job-menu { background:rgba(29,39,51,0.86);border-color:rgba(255,255,255,0.12);
                                     box-shadow:0 12px 32px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3); }
     .job-menu button { display:flex;align-items:center;gap:10px;width:100%;border:none;background:none;
                        border-radius:9px;padding:11px 12px;font-size:15px;letter-spacing:-0.01em;
@@ -249,8 +254,8 @@
                   color:#FFFFFF;border:none;border-radius:8px;cursor:pointer;font-family:inherit; }
     .danger-btn:hover { background:#B91C1C; }
     .danger-btn:disabled { opacity:0.6;cursor:default; }
-    [data-theme="dark"] .danger-zone { border-color:#7F1D1D; }
-    [data-theme="dark"] .danger-zone .section-title { color:#F87171; }
+    [data-theme="dark"] .danger-zone { border-color:rgba(236,122,111,0.38); }
+    [data-theme="dark"] .danger-zone .section-title { color:#EC7A6F; }
     /* --- construction draws --- */
     /* With draws on there are up to seven figures across, and six digits does
        not fit a 130px box. Widen the boxes and let the row wrap. */
@@ -1206,7 +1211,7 @@
 
   // Canvas cannot resolve CSS variables, so the chart reads the theme itself.
   const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
-  const axisColor = () => isDark() ? '#94A3B8' : '#64748B';
+  const axisColor = () => isDark() ? '#7D8E9E' : '#64748B';
   const gridColor = () => isDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
 
   function renderChart() {
