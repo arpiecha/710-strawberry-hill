@@ -26,6 +26,8 @@
       --dock-ghost-hover:rgba(15,23,42,0.06);
       --dock-shadow:0 14px 38px rgba(15,23,42,0.26), 0 3px 10px rgba(15,23,42,0.12);
       --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.85);
+      --dock-chip:rgba(13,27,42,0.88); --dock-chip-hi:rgba(13,27,42,0.95);
+      --dock-chip-shadow:0 3px 12px rgba(15,23,42,0.30), inset 0 1px 0 rgba(255,255,255,0.14);
     }
     /* Dark mode follows Telegram's: a desaturated blue-grey rather than navy,
        one soft blue accent instead of electric cyan, and status colours dropped
@@ -40,6 +42,8 @@
       --dock-ghost-hover:rgba(255,255,255,0.07);
       --dock-shadow:0 16px 42px rgba(0,0,0,0.62), 0 3px 10px rgba(0,0,0,0.4);
       --dock-sheen:inset 0 1px 0 rgba(255,255,255,0.08);
+      --dock-chip:rgba(51,144,236,0.86); --dock-chip-hi:rgba(74,159,240,0.94);
+      --dock-chip-shadow:0 3px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.20);
     }
     [data-theme="dark"] .modal-btn-confirm,
     [data-theme="dark"] .tab.active { color: var(--on-accent); }
@@ -97,8 +101,19 @@
     .error { padding: 1rem; color: #991B1B; background: #FEE2E2; border-radius: 8px; font-size: 14px; line-height: 1.6; }
     .download-btn { width: 100%; margin-top: 1rem; padding: 10px; font-size: 14px; }
     a { color: #2563EB; }
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    /* Modals arrive the way iOS presents one: the page behind dims and goes
+       out of focus while the card springs up to meet you, and leaves a little
+       quicker than it came. The spring is Apple's own sheet curve. */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                     background: rgba(0,0,0,0); z-index: 1000; align-items: center; justify-content: center;
+                     -webkit-backdrop-filter: blur(0px); backdrop-filter: blur(0px);
+                     transition: background 0.32s ease, backdrop-filter 0.32s ease,
+                                 -webkit-backdrop-filter 0.32s ease; }
     .modal-overlay.active { display: flex; }
+    .modal-overlay.in { background: rgba(0,0,0,0.42);
+                        -webkit-backdrop-filter: blur(16px) saturate(140%);
+                        backdrop-filter: blur(16px) saturate(140%); }
+    .modal-overlay.out { transition-duration: 0.22s; }
     /* Receipt photo viewer: the photo fills the modal, capped so the actions
        stay on screen on a phone. */
     .photo-modal { display: flex; flex-direction: column; gap: 10px; }
@@ -106,8 +121,34 @@
     .photo-modal-head h2 { margin-bottom: 0; }
     .photo-close { padding: 4px 9px; font-size: 15px; line-height: 1; color: var(--muted); }
     #photo-img { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 8px;
-                 border: 1px solid var(--border); background: var(--hover); }
-    .modal { background: var(--surface); border-radius: 10px; max-width: calc(100vw - 2rem); overflow-x: hidden; padding: 1.5rem; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+                 border: 1px solid var(--border); background: var(--hover);
+                 opacity: 0; transition: opacity 0.35s ease; }
+    #photo-img.loaded { opacity: 1; }
+    /* --zx/--zy/--zs say where the card grows from. Left alone it is a plain
+       scale-up; the photo viewer sets them to the link you tapped, so the
+       photo flies out of the row and falls back into it on the way out. */
+    .modal { background: var(--surface); border-radius: 10px; max-width: calc(100vw - 2rem); overflow-x: hidden; padding: 1.5rem; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+             opacity: 0;
+             transform: translate(var(--zx, 0px), var(--zy, 6px)) scale(var(--zs, 0.94));
+             transform-origin: center;
+             transition: transform 0.46s cubic-bezier(.32,.72,0,1), opacity 0.26s ease,
+                         height 0.42s cubic-bezier(.32,.72,0,1); }
+    .modal-overlay.in .modal { opacity: 1; transform: none; }
+    .modal-overlay.out .modal { transition-duration: 0.26s, 0.2s, 0s; opacity: 0; }
+    /* Putting the card at its starting point must not itself animate, or it
+       creeps there from wherever it was left and the zoom never happens. */
+    .modal-overlay.no-anim, .modal-overlay.no-anim .modal { transition: none !important; }
+    /* Swapping the spinner for the form: the card resizes instead of jumping,
+       and the new contents come up behind it. */
+    @keyframes modal-body-in {
+      from { opacity: 0; transform: translateY(7px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .modal-body-in { animation: modal-body-in 0.34s cubic-bezier(.32,.72,0,1) both; }
+    @media (prefers-reduced-motion: reduce) {
+      .modal-overlay, .modal, #photo-img { transition: none; }
+      .modal-body-in { animation: none; }
+    }
     .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
     .modal-field { margin-bottom: 12px; }
     .modal-field label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
@@ -127,8 +168,12 @@
     .modal-status.success { background: #D1FAE5; color: #059669; display: block; }
     .modal-status.error { background: #FEE2E2; color: #DC2626; display: block; }
     /* The two ways in sit in a floating frosted bar at the bottom of the
-       screen, within thumb reach, rather than scrolling away with the page. */
+       screen, within thumb reach, rather than scrolling away with the page.
+       The highlight behind the buttons is one chip that slides to whichever
+       one you touch, the way Instagram's tab bar does, instead of a coloured
+       button welded to one side. */
     .dock { position:fixed;left:50%;transform:translateX(-50%);z-index:800;
+            isolation:isolate;
             bottom:calc(14px + env(safe-area-inset-bottom));
             width:min(368px, calc(100% - 64px));
             display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;
@@ -137,20 +182,50 @@
             -webkit-backdrop-filter:blur(34px) saturate(200%);
             backdrop-filter:blur(34px) saturate(200%);
             box-shadow:var(--dock-shadow), var(--dock-sheen); }
-    .dock-btn { display:flex;align-items:center;justify-content:center;gap:9px;
-                padding:13px 10px;border:none;border-radius:999px;cursor:pointer;
+    /* Absolute, so it sits behind the buttons rather than taking a grid cell.
+       Its width is one column: half the bar, less the padding and half the gap. */
+    .dock-pill { position:absolute;z-index:0;top:6px;bottom:6px;left:6px;
+                 width:calc(50% - 9px);border-radius:999px;
+                 background:var(--dock-chip);box-shadow:var(--dock-chip-shadow);
+                 transition:transform 0.44s cubic-bezier(.22,.95,.3,1.06),
+                            background 0.2s ease; }
+    .dock-btn { position:relative;z-index:1;
+                display:flex;align-items:center;justify-content:center;gap:9px;
+                padding:14px 10px;border:none;border-radius:999px;cursor:pointer;
                 font-family:inherit;font-size:14px;font-weight:600;letter-spacing:0.01em;
-                background:none;color:var(--text);transition:background 0.18s, transform 0.12s; }
-    .dock-btn svg { width:21px;height:21px;flex-shrink:0;stroke-width:1.8; }
+                background:none;transition:color 0.22s ease, transform 0.12s; }
+    .dock-btn span { white-space:nowrap; }
+    .dock-btn svg { width:22px;height:22px;flex-shrink:0;stroke-width:1.8;
+                    transition:transform 0.22s cubic-bezier(.22,.95,.3,1.06); }
     .dock-btn:active { transform:scale(0.97); }
-    .dock-btn.primary { background:var(--accent);color:var(--on-accent); }
-    .dock-btn.primary:hover { background:var(--accent-hi); }
-    .dock-btn.ghost:hover { background:var(--dock-ghost-hover); }
+    .dock-btn:active svg { transform:scale(0.9); }
+    .dock-btn.primary { color:var(--on-accent); }
+    .dock-btn.ghost { color:var(--text); }
+    /* Pressing the right-hand button carries the chip, and the colours, over. */
+    .dock:has(.dock-btn.ghost:active) .dock-pill { transform:translateX(calc(100% + 6px)); }
+    .dock:has(.dock-btn.ghost:active) .dock-btn.primary { color:var(--text); }
+    .dock:has(.dock-btn.ghost:active) .dock-btn.ghost { color:var(--on-accent); }
+    @media (hover:hover) {
+      .dock:has(.dock-btn.ghost:hover) .dock-pill { transform:translateX(calc(100% + 6px)); }
+      .dock:has(.dock-btn.ghost:hover) .dock-btn.primary { color:var(--text); }
+      .dock:has(.dock-btn.ghost:hover) .dock-btn.ghost { color:var(--on-accent); }
+      .dock:has(.dock-btn.primary:hover) .dock-pill { background:var(--dock-chip-hi); }
+    }
+    /* Browsers without :has() keep the old solid-primary bar. */
+    @supports not (selector(:has(*))) {
+      .dock-pill { display:none; }
+      .dock-btn.primary { background:var(--accent); }
+      .dock-btn.primary:hover { background:var(--accent-hi); }
+      .dock-btn.ghost:hover { background:var(--dock-ghost-hover); }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      .dock-pill, .dock-btn, .dock-btn svg { transition:none; }
+    }
     /* Nothing should end up hidden behind the bar. */
     .container { padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
     @media (max-width:420px) {
-      .dock-btn { font-size:13px;gap:7px;padding:12px 6px; }
-      .dock-btn svg { width:19px;height:19px; }
+      .dock-btn { font-size:12.5px;gap:7px;padding:13px 4px;letter-spacing:0; }
+      .dock-btn svg { width:20px;height:20px; }
     }
     .upload-status { text-align: center; padding: 10px; font-size: 13px; border-radius: 8px; margin-bottom: 1rem; display: none; }
     .upload-status.success { background: #D1FAE5; color: #059669; }
@@ -172,6 +247,36 @@
        worth dropping; the photo link has to stay reachable. */
     @media (max-width: 500px) {
       .col-items { display: none; }
+    }
+    /* The meta cell only exists for the phone layout below. */
+    .c-meta { display: none; }
+    /* Seven columns cannot fit a phone without squeezing something to an
+       ellipsis, and Type and Amount are the two that must never lose
+       characters. So below 560px each receipt becomes two lines: store and
+       amount on top, then the type badge, date and category underneath with
+       the photo link and the buttons. Only the store and the category can
+       run out of room, and both are safe to shorten. */
+    @media (max-width: 560px) {
+      .table-wrap { overflow-x: visible; }
+      table { table-layout: auto; }
+      thead { display: none; }
+      table, tbody { display: block; width: 100%; }
+      tr { display: grid; grid-template-columns: minmax(0,1fr) auto auto;
+           grid-template-areas: "store store amount" "meta photo act";
+           align-items: center; column-gap: 10px; row-gap: 4px;
+           padding: 11px 2px; border-bottom: 1px solid var(--border-soft); }
+      tr:last-child { border-bottom: none; }
+      td { display: block; width: auto !important; padding: 0; border: none; }
+      .c-date, .c-cat, .c-type { display: none; }
+      .c-store { grid-area: store; font-size: 14px; font-weight: 600;
+                 min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+      .c-amount { grid-area: amount; font-size: 14px; text-align: right; white-space: nowrap; }
+      .c-meta { grid-area: meta; display: flex; align-items: center; gap: 7px;
+                min-width: 0; font-size: 12px; color: var(--muted); }
+      .c-meta .badge { flex-shrink: 0; }
+      .c-meta-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .col-photo { grid-area: photo; font-size: 12px; }
+      .c-act { grid-area: act; }
     }
     /* --- additions for multiple jobs --- */
     /* The wordmark from mygctracker.com: Space Grotesk bold with GC in cyan. */
@@ -309,6 +414,13 @@
     .switch input:focus-visible + .slider { outline:2px solid var(--accent);outline-offset:2px; }
     .row-del { border:none;background:none;color:#94A3B8;cursor:pointer;padding:2px 6px;font-size:14px;font-family:inherit; }
     .row-del:hover { color:#DC2626; }
+    /* Edit sits next to the delete ✕ on each receipt. Icon only. */
+    .c-act { display:flex;align-items:center;justify-content:flex-end;gap:1px; }
+    .row-act { border:none;background:none;color:#94A3B8;cursor:pointer;
+               padding:3px 5px;line-height:0;font-family:inherit;
+               transition:color 0.15s ease; }
+    .row-act:hover { color:var(--accent); }
+    .row-act svg { width:15px;height:15px;stroke-width:1.9;display:block; }
     .table-wrap { overflow-x:auto; }
     .hide { display:none !important; }
   </style>
@@ -572,6 +684,7 @@
     </div>
   <!-- The two ways in, always within thumb reach. -->
   <nav class="dock" id="dock" aria-label="Add a receipt">
+    <div class="dock-pill" aria-hidden="true"></div>
     <button class="dock-btn primary" onclick="document.getElementById('receipt-file-input').click()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M4.6 8.6h2.5l1.3-2.1h7.2l1.3 2.1h2.5a1.6 1.6 0 0 1 1.6 1.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 17V10.2a1.6 1.6 0 0 1 1.6-1.6z"/>
@@ -621,6 +734,8 @@
   let catChartInstance = null;
   let currentImageBase64 = null;
   let currentImageUrl = null;
+  // Set while the form is correcting an existing receipt rather than adding one.
+  let editingReceiptId = null;
   let timerHandle = null;
 
   const $ = id => document.getElementById(id);
@@ -843,13 +958,81 @@
   function openNewClient() {
     $('c-name').value = ''; $('c-address').value = ''; $('c-notes').value = '';
     $('client-status').className = 'modal-status';
-    $('client-modal').classList.add('active');
+    openModal('client-modal');
     $('c-name').focus();
   }
 
+  const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Show the card, then let the transitions run on the next frame. Pass the
+  // element that was tapped and the card grows out of it instead of out of
+  // the middle of the screen.
+  function openModal(id, origin) {
+    const el = $(id);
+    clearTimeout(el._closeTimer);        // reopening mid-close must not be undone
+    el.classList.remove('out');
+    el.classList.add('no-anim');
+    el.style.removeProperty('--zx');
+    el.style.removeProperty('--zy');
+    el.style.removeProperty('--zs');
+    el.classList.add('active');
+    if (origin && !REDUCED_MOTION) {
+      const card = el.querySelector('.modal');
+      const r = origin.getBoundingClientRect();
+      // offset*, not getBoundingClientRect: the card is already scaled down,
+      // and we want where it will land, not where it sits mid-animation.
+      const cx = card.offsetLeft + card.offsetWidth / 2;
+      const cy = card.offsetTop + card.offsetHeight / 2;
+      el.style.setProperty('--zx', Math.round(r.left + r.width / 2 - cx) + 'px');
+      el.style.setProperty('--zy', Math.round(r.top + r.height / 2 - cy) + 'px');
+      el.style.setProperty('--zs', '0.2');
+    }
+    void el.offsetWidth;                       // commit the starting state
+    requestAnimationFrame(() => {
+      el.classList.remove('no-anim');
+      el.classList.add('in');
+    });
+  }
+
   function closeModal(id) {
-    $(id).classList.remove('active');
-    if (id === 'photo-modal') $('photo-img').removeAttribute('src');   // don't flash the old photo
+    const el = $(id);
+    if (!el.classList.contains('active')) return;
+    el.classList.remove('in');
+    el.classList.add('out');
+    const done = () => {
+      el.classList.remove('active', 'out');
+      el.style.removeProperty('--zx');
+      el.style.removeProperty('--zy');
+      el.style.removeProperty('--zs');
+      if (id === 'photo-modal') {                 // don't flash the old photo
+        $('photo-img').removeAttribute('src');
+        $('photo-img').classList.remove('loaded');
+      }
+      if (id === 'upload-modal') editingReceiptId = null;   // abandoned edit
+    };
+    if (REDUCED_MOTION) done(); else el._closeTimer = setTimeout(done, 280);
+  }
+
+  // Swapping what is inside a modal: let the card resize into its new shape
+  // rather than jumping, and bring the new contents up behind it.
+  function setModalBody(html) {
+    const body = $('modal-body');
+    const card = body.closest('.modal');
+    // Only worth animating when the card is already sitting there. While it is
+    // still arriving, the spring is the animation and a resize fights it.
+    const settled = card.closest('.modal-overlay').classList.contains('in');
+    const from = card.offsetHeight;
+    body.classList.remove('modal-body-in');
+    body.innerHTML = html;
+    if (!settled || REDUCED_MOTION) return;
+    void body.offsetWidth;
+    body.classList.add('modal-body-in');
+    const to = card.offsetHeight;
+    if (Math.abs(to - from) < 2) return;
+    card.style.height = from + 'px';
+    void card.offsetWidth;
+    card.style.height = to + 'px';
+    setTimeout(() => { card.style.height = ''; }, 440);
   }
 
   document.addEventListener('keydown', e => {
@@ -862,13 +1045,17 @@
     return API_BASE + '/receipts/' + id + '/image?key=' + encodeURIComponent(password);
   }
 
-  function openPhoto(id) {
+  function openPhoto(id, origin) {
     const r = allReceipts.find(x => x.id === id);
     const url = photoUrl(id);
+    const img = $('photo-img');
     $('photo-title').textContent = r ? r.store + ' — ' + showDate(r.date) : 'Receipt';
-    $('photo-img').src = url;
+    img.classList.remove('loaded');
+    img.onload = () => img.classList.add('loaded');   // fade in, no blank box
+    img.src = url;
+    if (img.complete) img.classList.add('loaded');
     $('photo-open').href = url;
-    $('photo-modal').classList.add('active');
+    openModal('photo-modal', origin);
   }
 
   async function createClient() {
@@ -1260,25 +1447,38 @@
     const rows = allReceipts.map(r => {
       const isReturn = r.amount < 0;
       const photoLink = r.has_image
-        ? '<a href="#" onclick="openPhoto(' + r.id + ');return false;">view</a>'
+        ? '<a href="#" onclick="openPhoto(' + r.id + ', this);return false;">view</a>'
         : '';
+      const badge = '<span class="badge ' + (isReturn ? 'badge-return' : 'badge-purchase') + '">' + esc(r.type) + '</span>';
       return '<tr>' +
-        '<td style="width:90px">' + esc(showDate(r.date)) + '</td>' +
-        '<td style="width:130px">' + esc(r.store) + '</td>' +
-        '<td style="width:100px">' + esc(r.category) + '</td>' +
-        '<td style="width:70px"><span class="badge ' + (isReturn ? 'badge-return' : 'badge-purchase') + '">' + esc(r.type) + '</span></td>' +
-        '<td style="width:75px" class="' + (isReturn ? 'amount-neg' : 'amount-pos') + '">' + (isReturn ? '-' : '+') + money(r.amount) + '</td>' +
-        '<td class="col-items" style="width:180px;color:var(--muted);font-size:12px;">' + esc(r.items) + '</td>' +
+        '<td class="c-date" style="width:90px">' + esc(showDate(r.date)) + '</td>' +
+        '<td class="c-store" style="width:130px">' + esc(r.store) + '</td>' +
+        '<td class="c-cat" style="width:100px">' + esc(r.category) + '</td>' +
+        '<td class="c-type" style="width:80px">' + badge + '</td>' +
+        '<td class="c-amount ' + (isReturn ? 'amount-neg' : 'amount-pos') + '" style="width:85px">' + (isReturn ? '-' : '+') + money(r.amount) + '</td>' +
+        '<td class="col-items" style="width:170px;color:var(--muted);font-size:12px;">' + esc(r.items) + '</td>' +
+        // Date, category and type collapse into this one line on a phone, with
+        // the badge first so the word is never the thing that gets clipped.
+        '<td class="c-meta">' + badge + '<span class="c-meta-text">' + esc(showDate(r.date)) +
+          (r.category ? ' · ' + esc(r.category) : '') + '</span></td>' +
         '<td class="col-photo" style="width:50px">' + photoLink + '</td>' +
-        '<td style="width:40px"><button class="row-del" title="Delete receipt" onclick="deleteReceipt(' + r.id + ')">✕</button></td>' +
+        '<td class="c-act" style="width:64px">' +
+          '<button class="row-act" title="Edit receipt" aria-label="Edit receipt" onclick="editReceipt(' + r.id + ')">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M15.5 4.3a2 2 0 0 1 2.8 0l1.4 1.4a2 2 0 0 1 0 2.8L9.4 18.8l-4.2 1.4 1.4-4.2z"/>' +
+            '<path d="M14.1 5.7 18.3 9.9"/></svg>' +
+          '</button>' +
+          '<button class="row-del" title="Delete receipt" aria-label="Delete receipt" onclick="deleteReceipt(' + r.id + ')">✕</button>' +
+        '</td>' +
         '</tr>';
     }).join('');
 
     $('table-container').innerHTML = '<div class="table-wrap"><table><thead><tr>' +
-      '<th style="width:90px">Date</th><th style="width:130px">Store</th>' +
-      '<th style="width:100px">Category</th><th style="width:70px">Type</th>' +
-      '<th style="width:75px">Amount</th><th class="col-items" style="width:180px">Items</th>' +
-      '<th class="col-photo" style="width:50px">Photo</th><th style="width:40px"></th>' +
+      '<th class="c-date" style="width:90px">Date</th><th class="c-store" style="width:130px">Store</th>' +
+      '<th class="c-cat" style="width:100px">Category</th><th class="c-type" style="width:80px">Type</th>' +
+      '<th class="c-amount" style="width:85px">Amount</th><th class="col-items" style="width:170px">Items</th>' +
+      '<th class="c-meta"></th>' +
+      '<th class="col-photo" style="width:50px">Photo</th><th class="c-act" style="width:64px"></th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
@@ -1359,8 +1559,10 @@
     this.value = '';
     if (!file) return;
 
-    $('upload-modal').classList.add('active');
-    $('modal-body').innerHTML = '<div class="modal-analyzing"><div class="modal-spinner"></div>Analyzing receipt...</div>';
+    editingReceiptId = null;
+    setModalTitle('📸 Upload Receipt');
+    openModal('upload-modal');
+    setModalBody('<div class="modal-analyzing"><div class="modal-spinner"></div>Analyzing receipt...</div>');
     try {
       const dataUrl = await downscale(file);
       currentImageUrl = dataUrl;
@@ -1376,10 +1578,37 @@
   });
 
   function openManualEntry() {
+    editingReceiptId = null;
     currentImageBase64 = null;
     currentImageUrl = null;
-    $('upload-modal').classList.add('active');
+    setModalTitle('✎ Manual Entry');
+    openModal('upload-modal');
     receiptForm({}, '');
+  }
+
+  function setModalTitle(text) {
+    document.querySelector('#upload-modal h2').textContent = text;
+  }
+
+  // Edit opens the same form the upload flow confirms into, filled in with
+  // what is already stored. The photo is left as it is.
+  function editReceipt(id) {
+    const r = allReceipts.find(x => x.id === id);
+    if (!r) return;
+    editingReceiptId = id;
+    currentImageBase64 = null;                       // not re-uploading a photo
+    currentImageUrl = r.has_image ? photoUrl(id) : null;
+    setModalTitle('✎ Edit Receipt');
+    openModal('upload-modal');
+    receiptForm({
+      store: r.store,
+      total: Math.abs(r.amount),
+      date: r.date,
+      category: r.category,
+      type: r.type,
+      items: r.items,
+      notes: r.notes
+    }, '');
   }
 
   function receiptForm(r, warning) {
@@ -1391,7 +1620,7 @@
     const known = r.category && names.includes(r.category);
     const choices = known || !r.category ? names : names.concat(r.category);
     const cat = known ? r.category : (names.includes('MISC') ? 'MISC' : names[names.length - 1]);
-    $('modal-body').innerHTML =
+    setModalBody(
       (currentImageUrl ? '<img class="modal-preview" src="' + currentImageUrl + '" alt="Receipt">' : '') +
       '<div id="m-status" class="modal-status ' + (warning ? 'error' : '') + '">' + esc(warning) + '</div>' +
       '<div class="modal-field"><label>Store</label><input id="m-store" type="text" value="' + esc(r.store || '') + '"></div>' +
@@ -1409,7 +1638,7 @@
       '<div class="modal-actions">' +
         '<button class="modal-btn modal-btn-cancel" onclick="closeModal(\'upload-modal\')">Cancel</button>' +
         '<button class="modal-btn modal-btn-confirm" id="m-save" onclick="saveReceipt(false)">Save</button>' +
-      '</div>';
+      '</div>');
     if (warning) $('m-status').style.display = 'block';
   }
 
@@ -1426,18 +1655,28 @@
     if (isNaN(amount)) return fail('Amount is required');
 
     btn.disabled = true; btn.textContent = 'Saving...';
+    const fields = {
+      date: $('m-date').value || today(),
+      store, category: $('m-category').value, type: $('m-type').value, amount,
+      items: $('m-items').value.trim(), notes: $('m-notes').value.trim()
+    };
     try {
-      const r = await api('/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: currentClientId(),
-          date: $('m-date').value || today(),
-          store, category: $('m-category').value, type: $('m-type').value, amount,
-          items: $('m-items').value.trim(), notes: $('m-notes').value.trim(),
-          image_base64: currentImageBase64, source: 'dashboard', force: !!force
-        })
-      });
+      // Correcting one that already exists, or filing a new one. An edit is a
+      // deliberate change, so it skips the duplicate check.
+      const r = editingReceiptId
+        ? await api('/receipts/' + editingReceiptId, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fields)
+          })
+        : await api('/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.assign({
+              client_id: currentClientId(),
+              image_base64: currentImageBase64, source: 'dashboard', force: !!force
+            }, fields))
+          });
       const data = await r.json();
 
       if (data.duplicate) {
@@ -1455,6 +1694,7 @@
       if (!data.success) return fail(data.error || 'Could not save');
 
       closeModal('upload-modal');
+      editingReceiptId = null;
       currentImageBase64 = null; currentImageUrl = null;
       await loadClients();
     } catch (e) {
